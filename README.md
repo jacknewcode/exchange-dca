@@ -13,7 +13,7 @@
 - 账户管理：在网页填写 Bitget API Key、Secret Key 和 Passphrase，同步余额与持仓币种。
 - 执行记录：查看订单提交和成交状态、已确认成交的投入统计、导出 CSV。
 - Telegram：手动投入和定时执行提交订单后发送通知，可通知执行失败、发送测试消息。
-- 登录页面：单管理员账户、会话登录、登录密码使用随机盐和 scrypt 哈希保存。
+- 登录页面：单管理员账户、会话登录、登录密码使用随机盐和 scrypt 哈希保存；忘记密码可运行重置脚本。
 - MySQL：保存计划、执行记录、交易对缓存、密钥、认证和通知设置，自动创建表并兼容旧 JSON 迁移。
 
 本项目用于个人账户自行部署；每个使用者运行自己的实例和数据库，不是开放注册的多用户交易平台。
@@ -101,7 +101,7 @@ server.mjs             HTTP API、认证、定时任务、JSON 迁移
 src/bitget-client.mjs  Bitget API 客户端
 src/mysql-store.mjs    MySQL 表和存储操作
 web/                   网站静态页面、样式和交互
-scripts/               检查、重启、诊断、服务安装
+  scripts/               检查、重启、诊断、服务安装、密码重置和一键更新
 deploy/                部署配置、Nginx 和 systemd 服务
 docs/                   详细说明
 data/                   旧数据迁移目录（不提交）

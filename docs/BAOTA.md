@@ -184,7 +184,18 @@ sudo certbot --nginx --redirect -d your-domain.example.com
 
 证书申请前必须让域名解析到本机，并放行 80 端口。宝塔申请的证书和仓库脚本申请的证书不要重复覆盖，续期只保留一个管理入口。
 
-## 8. 部署完成后的更新
+## 8. 忘记登录密码
+
+登录页的“忘记密码？”会显示下面的命令。它不会在网页上直接修改密码，避免未登录用户远程重置管理员账号：
+
+```bash
+cd /opt/orbit-dca
+sudo ./scripts/reset-password.sh
+```
+
+脚本会隐藏输入新密码，生成随机盐和 scrypt 哈希并更新 MySQL 的 `auth_credentials` 表，然后自动重启正在运行的 systemd 或宝塔 PM2 项目。Bitget API、Telegram、定投计划和执行记录不会被删除。密码至少 8 个字符。
+
+## 9. 部署完成后的更新
 
 项目已经提供一键更新脚本。下面命令适用于方案 A（systemd），它会自动备份数据库、拉取 `main`、安装生产依赖、重启服务并检查健康状态：
 
@@ -215,7 +226,7 @@ sudo ORBIT_DCA_PM2_USER=实际运行用户 ./scripts/update.sh
 
 脚本会自动恢复 Git 已跟踪文件的本地修改后继续更新；`.env`、`data/`、`runtime/` 和 `node_modules/` 等未跟踪运行文件会保留。不要让 systemd 和 PM2 同时运行，否则会出现端口占用和重复执行定投。
 
-## 9. 更新失败时回滚
+## 10. 更新失败时回滚
 
 先查看服务日志，再回到已知可用的提交：
 
@@ -230,7 +241,7 @@ sudo systemctl restart orbit-dca
 
 如果数据库已经发生不可逆变更，先停止应用，再使用最近的 `mysqldump` 备份恢复。回滚代码前请确认该版本支持当前数据库结构。
 
-## 10. 常见故障
+## 11. 常见故障
 
 - **502 Bad Gateway**：Node 服务没有监听 `127.0.0.1:8787`，检查 `systemctl status orbit-dca` 或宝塔 Node 项目日志。
 - **域名打不开**：检查 DNS、云安全组、防火墙和宝塔站点的域名绑定；80/443 必须从公网可达。

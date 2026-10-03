@@ -162,6 +162,13 @@ Certbot 会申请证书、将 HTTP 跳转到 HTTPS，并配置自动续期。检
 
 ## 7. 备份、更新和回滚
 
+忘记登录密码时，在服务器执行下面的脚本。它会更新 `auth_credentials` 中的密码哈希并重启应用，不会删除定投数据：
+
+```bash
+cd /opt/orbit-dca
+sudo ./scripts/reset-password.sh
+```
+
 备份数据库：
 
 ```bash
