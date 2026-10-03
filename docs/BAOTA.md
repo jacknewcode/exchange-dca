@@ -42,6 +42,8 @@ bash install_panel.sh docscenter
 
 项目最低要求为 Node.js 18.17。MySQL 需要 5.7 兼容版本；如果软件商店没有 5.7，请按 [原生部署指南](DEPLOYMENT.md) 使用已经安装好的 MySQL 5.7，不要为了面板按钮直接升级现有生产数据库。
 
+安装 Node.js 后，还需要在“Node.js 版本管理器”或“网站 → Node 项目”中设置**命令行版本**，选择刚安装的版本，再重新打开宝塔终端或 SSH。仅安装版本并不一定让终端能找到 `node`、`npm`。[宝塔官方说明](https://www.bt.cn/bbs/thread-75284-1-1.html)
+
 在宝塔“终端”中确认版本：
 
 ```bash
@@ -77,8 +79,28 @@ EXIT;
 ```bash
 sudo git clone https://github.com/jacknewcode/exchange-dca.git /opt/orbit-dca
 cd /opt/orbit-dca
-sudo npm ci --omit=dev
+npm ci --omit=dev
 ```
+
+以上依赖安装命令在宝塔的 root 终端中执行。root 已经有管理员权限，不需要再添加 `sudo`；`sudo` 可能重置命令搜索路径，导致 `sudo: npm: command not found`。
+
+如果仍提示 `npm: command not found`，先按第 3 节设置命令行版本并重新连接终端。如果已经安装版本但仍无法识别，查看实际安装目录：
+
+```bash
+ls -d /www/server/nodejs/*/bin
+```
+
+把下面的 `v实际版本号` 替换成上一步显示的目录名称，将该版本加入当前终端的搜索路径：
+
+```bash
+export PATH="/www/server/nodejs/v实际版本号/bin:$PATH"
+node --version
+npm --version
+cd /opt/orbit-dca
+npm ci --omit=dev
+```
+
+若目录不存在，说明尚未在宝塔中安装 Node.js，先返回软件商店安装。非 root 用户应由管理员授予项目目录权限，或在确认使用正确版本后执行 `sudo env "PATH=$PATH" npm ci --omit=dev`。
 
 复制配置模板并编辑：
 
