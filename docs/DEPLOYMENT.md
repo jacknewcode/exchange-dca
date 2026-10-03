@@ -2,6 +2,8 @@
 
 项目不依赖 Docker。Node.js 作为 `orbit-dca.service` 运行，MySQL 5.7 作为系统数据库服务运行。
 
+如果你习惯用宝塔管理服务器，请先看[宝塔面板部署指南](BAOTA.md)。它使用同一套 Node.js、MySQL 5.7 和 Nginx 架构，并补充了宝塔面板中的站点、证书和更新步骤。
+
 ## 1. 安装基础软件
 
 服务器建议使用 Debian/Ubuntu，安装 Node.js 18.17 或更新版本、Git 和 MySQL 5.7。Node.js 建议使用当前 LTS 版本：

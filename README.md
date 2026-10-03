@@ -36,7 +36,7 @@ sudo ./scripts/install-nginx.sh your-domain.example.com
 sudo certbot --nginx --redirect -d your-domain.example.com
 ```
 
-完整步骤见 [原生部署指南](docs/DEPLOYMENT.md)。DNS 的 A/AAAA 记录指向服务器后，用 `https://你的域名` 访问。Node.js 只监听本机，MySQL 3306 不需要对公网开放。
+完整步骤见 [原生部署指南](docs/DEPLOYMENT.md)。如果使用宝塔面板，参阅[宝塔部署指南](docs/BAOTA.md)。DNS 的 A/AAAA 记录指向服务器后，用 `https://你的域名` 访问。Node.js 只监听本机，MySQL 3306 不需要对公网开放。
 
 > MySQL 5.7.44 是 5.7 的最后一个发行版本。项目按现有兼容需求使用 5.7；新部署请确认发行版是否提供对应的 MySQL 5.7 软件源。[MySQL 官方说明](https://dev.mysql.com/doc/relnotes/mysql/5.7/en/news-5-7-44.html)
 
@@ -80,6 +80,7 @@ npm start
 ## 文档
 
 - [完整部署指南](docs/DEPLOYMENT.md)：Node.js、MySQL 5.7、systemd、HTTPS、更新、备份和常见故障。
+- [宝塔面板部署](docs/BAOTA.md)：宝塔安装、Node.js/MySQL/Nginx、域名 HTTPS、更新和回滚。
 - [配置说明](docs/CONFIGURATION.md)：环境变量、密钥保存方式和数据目录。
 - [GitHub 发布指南](docs/PUBLISHING.md)：如何上传仓库、排除私人数据并发布版本。
 - [贡献指南](CONTRIBUTING.md) · [安全说明](SECURITY.md) · [MIT 许可证](LICENSE)
