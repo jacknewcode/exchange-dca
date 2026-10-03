@@ -153,12 +153,24 @@ curl -u admin:登录密码 http://127.0.0.1:8787/api/health
 如果 Node.js 由宝塔版本管理器提供且不在 `/usr/bin/node`，可以在宝塔 Node 项目管理器中新建项目：
 
 - 项目目录：`/opt/orbit-dca`；
-- 启动文件：`server.mjs`；
-- 启动命令：`node server.mjs`；
+- 启动选项：自定义启动命令，填写 `node server.mjs`（无需再单独选择启动文件）；
+- 包管理器：`npm`；
+- 运行用户：`www`；
 - 监听端口：`8787`；
 - 项目名称：`orbit-dca`。
 
-把 `/etc/orbit-dca/environment` 中的变量填写到项目环境变量，或在启动命令中加载同一份配置。使用此方案时不要再执行 `systemctl enable --now orbit-dca`，更新时使用宝塔的“重启项目”或对应的 PM2 命令。
+应用自动读取的是 `/opt/orbit-dca/.env`，不会自动读取 `.environment` 或 `/etc/orbit-dca/environment`。后者由 systemd 的 `EnvironmentFile` 加载，仅适用于方案 A。
+
+如果已经按第 5 节填写好 `/etc/orbit-dca/environment`，在 root 终端复制为项目 `.env` 并允许 `www` 用户读取。首次部署时执行以下命令（已有 `.env` 时先检查和备份，避免覆盖）：
+
+```bash
+install -o www -g www -m 0600 /etc/orbit-dca/environment /opt/orbit-dca/.env
+install -d -o www -g www -m 0700 /opt/orbit-dca/data
+```
+
+如果配置保存在其他位置，直接在宝塔文件管理中创建 `/opt/orbit-dca/.env`，把登录和数据库配置复制进去，然后设置该文件属主为 `www`、权限为 `600`。文件名必须是 `.env`，不是 `.environment` 或 `.env.txt`。配置与密钥不会提交到 Git。
+
+保存后在宝塔中启动或重启项目。也可以通过宝塔项目环境变量传入这些配置；已传入的变量优先于 `.env`。使用此方案时不要再执行 `systemctl enable --now orbit-dca`，更新时使用宝塔的“重启项目”或对应的 PM2 命令。
 
 ## 7. 在宝塔添加网站和 HTTPS
 
