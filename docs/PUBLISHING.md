@@ -2,7 +2,7 @@
 
 ## 创建仓库
 
-在 GitHub 创建一个空仓库，例如 `orbit-dca`。不要勾选自动生成 README、License 或 `.gitignore`，本项目已经包含这些文件。
+本项目仓库地址是 [jacknewcode/exchange-dca](https://github.com/jacknewcode/exchange-dca)。如果你要发布自己的分支，请创建一个空仓库；不要勾选自动生成 README、License 或 `.gitignore`，本项目已经包含这些文件。
 
 ## 发布本地整理好的代码
 
@@ -20,14 +20,14 @@ git config user.name "你的 GitHub 名称"
 git config user.email "你的 GitHub 邮箱"
 git commit -m "Prepare Orbit DCA for public release"
 git branch -M main
-git remote add origin https://github.com/<账号>/orbit-dca.git
+git remote add origin https://github.com/<账号>/<仓库名>.git
 git push -u origin main
 ```
 
 如果使用 SSH：
 
 ```bash
-git remote add origin git@github.com:<账号>/orbit-dca.git
+git remote add origin git@github.com:<账号>/<仓库名>.git
 git push -u origin main
 ```
 
@@ -36,11 +36,11 @@ git push -u origin main
 ```bash
 npm ci
 npm run check
-bash -n scripts/install-service.sh
-git ls-files | grep -E '(^|/)(\.env$|data/|runtime/|.*\.sql$)'
+bash -n scripts/install-service.sh scripts/install-nginx.sh
+git ls-files | grep -E '(^|/)(\.env$|.*\.sql$)'
 ```
 
-最后一条不应输出真实配置或运行数据。`.env.example`、`deploy/environment.example 和 `deploy/nginx/`` 和文档中的密码必须都是占位符。
+最后一条不应输出真实配置或运行数据。`.env.example`、`deploy/environment.example` 和 `deploy/nginx/` 中的密码与域名都应是示例值。
 
 ## 账号和历史泄露
 

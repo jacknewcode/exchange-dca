@@ -66,7 +66,7 @@ MySQL 只需监听 `127.0.0.1:3306`。远程 Navicat 管理应临时配置限定
 ## 3. 下载并安装 Orbit DCA
 
 ```bash
-sudo git clone https://github.com/<你的账号>/orbit-dca.git /opt/orbit-dca
+sudo git clone https://github.com/jacknewcode/exchange-dca.git /opt/orbit-dca
 cd /opt/orbit-dca
 sudo ./scripts/install-service.sh
 ```

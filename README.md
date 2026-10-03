@@ -1,5 +1,8 @@
 # Orbit DCA
 
+[![Checks](https://github.com/jacknewcode/exchange-dca/actions/workflows/check.yml/badge.svg)](https://github.com/jacknewcode/exchange-dca/actions/workflows/check.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 一个可自行部署的 **Bitget 现货定投控制台**，使用 Node.js、原生 HTML/CSS/JavaScript 和 MySQL 5.7。无需前端构建，适配电脑与手机。
 
 **当前版本只运行实盘。** 点击“立即投入”或启用定时计划会向 Bitget 提交真实订单；没有模拟盘。请先配置 API 权限并核对每次投入金额。
@@ -19,10 +22,12 @@
 
 项目不依赖 Docker。直接在服务器安装 Node.js 服务和 MySQL 5.7 服务，Node.js 运行网站，MySQL 保存业务数据。
 
+项目地址：[github.com/jacknewcode/exchange-dca](https://github.com/jacknewcode/exchange-dca)
+
 ```bash
 sudo apt install -y nodejs npm git nginx certbot python3-certbot-nginx
 sudo systemctl enable --now mysql nginx
-sudo git clone https://github.com/<你的账号>/orbit-dca.git /opt/orbit-dca
+sudo git clone https://github.com/jacknewcode/exchange-dca.git /opt/orbit-dca
 cd /opt/orbit-dca
 sudo ./scripts/install-service.sh
 sudoedit /etc/orbit-dca/environment
