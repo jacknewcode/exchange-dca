@@ -201,11 +201,16 @@ sudo ./scripts/update.sh
 sudo ./scripts/update.sh --skip-backup
 ```
 
-使用方案 B（宝塔 Node 项目管理器/PM2）时也可以使用同一脚本；它会在没有 `orbit-dca.service` 时尝试重启 PM2 项目：
+使用方案 B（宝塔 Node 项目管理器/PM2）时也可以使用同一脚本。脚本会读取 `/opt/orbit-dca/.env`，自动寻找宝塔 Node.js 的 `pm2`，并以项目运行用户（默认 `www`）重启 `orbit-dca`，不需要再回面板手动点击重启：
 
 ```bash
-cd /opt/orbit-dca
 sudo ./scripts/update.sh
+```
+
+如果项目不是用 `www` 用户运行，可以指定实际用户：
+
+```bash
+sudo ORBIT_DCA_PM2_USER=实际运行用户 ./scripts/update.sh
 ```
 
 脚本发现工作目录有未提交改动时会停止，避免更新覆盖本地文件。不要让 systemd 和 PM2 同时运行，否则会出现端口占用和重复执行定投；更新前不要执行 `git clean -fdx`，以免删除本地配置、备份或运行数据。

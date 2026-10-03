@@ -5,6 +5,8 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BRANCH="${ORBIT_DCA_BRANCH:-main}"
 ENV_FILE="${ORBIT_DCA_ENV_FILE:-/etc/orbit-dca/environment}"
 BACKUP_DIR="${ORBIT_DCA_BACKUP_DIR:-/root/backup/orbit-dca}"
+PM2_USER="${ORBIT_DCA_PM2_USER:-}"
+PM2_HOME_OVERRIDE="${ORBIT_DCA_PM2_HOME:-}"
 SKIP_BACKUP=0
 
 usage() {
@@ -29,6 +31,21 @@ if [[ "$(id -u)" -ne 0 ]]; then
   exit 1
 fi
 
+# 宝塔 Node.js 版本管理器通常不会把 node/npm 放进 root 的默认 PATH。
+# 优先使用显式路径，其次寻找系统 Node.js，再寻找宝塔安装的版本。
+NODE_BIN_DIR="${ORBIT_DCA_NODE_BIN_DIR:-}"
+if [[ -z "$NODE_BIN_DIR" ]]; then
+  for node_binary in /usr/bin/node /usr/local/bin/node /www/server/nodejs/*/bin/node; do
+    if [[ -x "$node_binary" ]]; then
+      NODE_BIN_DIR="$(dirname "$node_binary")"
+      break
+    fi
+  done
+fi
+if [[ -n "$NODE_BIN_DIR" ]]; then
+  export PATH="$NODE_BIN_DIR:$PATH"
+fi
+
 for tool in git npm; do
   command -v "$tool" >/dev/null 2>&1 || {
     echo "缺少 $tool，请先安装依赖" >&2
@@ -50,13 +67,23 @@ if [[ -n "$(git status --porcelain)" ]]; then
   exit 1
 fi
 
+config_file() {
+  if [[ -r "$PROJECT_ROOT/.env" ]]; then
+    printf '%s' "$PROJECT_ROOT/.env"
+  elif [[ -r "$ENV_FILE" ]]; then
+    printf '%s' "$ENV_FILE"
+  fi
+}
+
 backup_database() {
   if [[ "$SKIP_BACKUP" -eq 1 ]]; then
     echo "已跳过数据库备份（--skip-backup）"
     return
   fi
-  if [[ ! -r "$ENV_FILE" ]]; then
-    echo "未找到 $ENV_FILE，跳过数据库备份。需要备份时请先配置它，或明确使用 --skip-backup。"
+  local config
+  config="$(config_file)"
+  if [[ -z "$config" ]]; then
+    echo "未找到项目 .env 或 $ENV_FILE，跳过数据库备份。需要备份时请先配置它，或明确使用 --skip-backup。"
     return
   fi
   if ! command -v mysqldump >/dev/null 2>&1; then
@@ -67,7 +94,7 @@ backup_database() {
   (
     set -a
     # shellcheck disable=SC1090
-    . "$ENV_FILE"
+    . "$config"
     set +a
 
     db_host="${MYSQL_HOST:-127.0.0.1}"
@@ -89,11 +116,13 @@ backup_database() {
 }
 
 read_port() {
-  if [[ -r "$ENV_FILE" ]]; then
+  local config
+  config="$(config_file)"
+  if [[ -n "$config" ]]; then
     (
       set -a
       # shellcheck disable=SC1090
-      . "$ENV_FILE"
+      . "$config"
       set +a
       printf '%s' "${PORT:-8787}"
     )
@@ -102,8 +131,62 @@ read_port() {
   fi
 }
 
+pm2_binary() {
+  if [[ -n "${ORBIT_DCA_PM2_BIN:-}" && -x "$ORBIT_DCA_PM2_BIN" ]]; then
+    printf '%s' "$ORBIT_DCA_PM2_BIN"
+    return
+  fi
+  if command -v pm2 >/dev/null 2>&1; then
+    command -v pm2
+    return
+  fi
+  for candidate in /www/server/nodejs/*/bin/pm2 /usr/local/bin/pm2 /usr/bin/pm2; do
+    if [[ -x "$candidate" ]]; then
+      printf '%s' "$candidate"
+      return
+    fi
+  done
+}
+
+detect_pm2_user() {
+  if [[ -n "$PM2_USER" ]]; then
+    return
+  fi
+  PM2_USER="$(ps -eo user=,args= 2>/dev/null | awk '$0 ~ /\/opt\/orbit-dca\/server\.mjs/ {print $1; exit}')"
+  PM2_USER="${PM2_USER:-www}"
+}
+
+restart_pm2() {
+  detect_pm2_user
+  if ! id "$PM2_USER" >/dev/null 2>&1; then
+    echo "找不到 PM2 运行用户：$PM2_USER" >&2
+    return 1
+  fi
+
+  local pm2
+  pm2="$(pm2_binary)"
+  if [[ -z "$pm2" ]]; then
+    return 1
+  fi
+  local pm2_dir
+  pm2_dir="$(dirname "$pm2")"
+  local pm2_home
+  if [[ -n "$PM2_HOME_OVERRIDE" ]]; then
+    pm2_home="$PM2_HOME_OVERRIDE"
+  else
+    pm2_home="$(getent passwd "$PM2_USER" | cut -d: -f6)/.pm2"
+  fi
+  local pm2_env=(PATH="$pm2_dir:$PATH" PM2_HOME="$pm2_home")
+  if ! sudo -u "$PM2_USER" -H env "${pm2_env[@]}" "$pm2" describe orbit-dca >/dev/null 2>&1; then
+    return 1
+  fi
+  echo "正在以 $PM2_USER 用户重启 PM2 项目 orbit-dca"
+  sudo -u "$PM2_USER" -H env "${pm2_env[@]}" "$pm2" restart orbit-dca --update-env
+  sudo -u "$PM2_USER" -H env "${pm2_env[@]}" "$pm2" save >/dev/null 2>&1 || true
+}
+
 restart_service() {
-  if command -v systemctl >/dev/null 2>&1 && systemctl cat orbit-dca.service >/dev/null 2>&1; then
+  if command -v systemctl >/dev/null 2>&1 && systemctl cat orbit-dca.service >/dev/null 2>&1 && systemctl is-active --quiet orbit-dca.service; then
     echo "正在重启 systemd 服务 orbit-dca"
     systemctl restart orbit-dca.service
     systemctl is-active --quiet orbit-dca.service || {
@@ -113,10 +196,14 @@ restart_service() {
     return
   fi
 
-  if command -v pm2 >/dev/null 2>&1 && pm2 describe orbit-dca >/dev/null 2>&1; then
-    echo "正在重启 PM2 项目 orbit-dca"
-    pm2 restart orbit-dca --update-env
-    pm2 save >/dev/null 2>&1 || true
+  if restart_pm2; then
+    return
+  fi
+
+  if command -v systemctl >/dev/null 2>&1 && systemctl cat orbit-dca.service >/dev/null 2>&1; then
+    echo "正在启动 systemd 服务 orbit-dca"
+    systemctl restart orbit-dca.service
+    systemctl is-active --quiet orbit-dca.service || return 1
     return
   fi
 
