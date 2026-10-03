@@ -60,11 +60,14 @@ fi
 
 cd "$PROJECT_ROOT"
 
-if [[ -n "$(git status --porcelain)" ]]; then
-  echo "工作目录有未提交或未跟踪文件，已停止更新：" >&2
-  git status --short >&2
-  echo "请先提交、备份或清理这些文件，再重新执行。" >&2
-  exit 1
+if ! git diff --quiet HEAD --; then
+  echo "检测到 Git 已跟踪文件的本地修改，更新前自动恢复为当前提交："
+  git diff --name-only HEAD --
+  git reset --hard HEAD
+fi
+if [[ -n "$(git ls-files --others --exclude-standard)" ]]; then
+  echo "检测到未跟踪文件，保留这些文件并继续更新："
+  git ls-files --others --exclude-standard
 fi
 
 config_file() {

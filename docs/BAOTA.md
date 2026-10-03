@@ -213,7 +213,7 @@ sudo ./scripts/update.sh
 sudo ORBIT_DCA_PM2_USER=实际运行用户 ./scripts/update.sh
 ```
 
-脚本发现工作目录有未提交改动时会停止，避免更新覆盖本地文件。不要让 systemd 和 PM2 同时运行，否则会出现端口占用和重复执行定投；更新前不要执行 `git clean -fdx`，以免删除本地配置、备份或运行数据。
+脚本会自动恢复 Git 已跟踪文件的本地修改后继续更新；`.env`、`data/`、`runtime/` 和 `node_modules/` 等未跟踪运行文件会保留。不要让 systemd 和 PM2 同时运行，否则会出现端口占用和重复执行定投。
 
 ## 9. 更新失败时回滚
 

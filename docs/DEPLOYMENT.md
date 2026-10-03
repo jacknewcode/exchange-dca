@@ -176,7 +176,7 @@ cd /opt/orbit-dca
 sudo ./scripts/update.sh
 ```
 
-如果已经有其他可恢复的数据库备份，可以跳过本次备份：`sudo ./scripts/update.sh --skip-backup`。脚本发现工作目录有未提交改动时会停止，避免更新覆盖本地文件。
+如果已经有其他可恢复的数据库备份，可以跳过本次备份：`sudo ./scripts/update.sh --skip-backup`。脚本会自动恢复 Git 已跟踪文件的本地修改后继续更新，项目 `.env`、运行数据和依赖目录不会被删除。
 
 不要执行 `git clean -fdx`，它可能删除配置、备份和运行数据。升级前先验证数据库备份可恢复。
 
