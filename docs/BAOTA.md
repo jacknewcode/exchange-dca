@@ -102,12 +102,12 @@ npm ci --omit=dev
 
 若目录不存在，说明尚未在宝塔中安装 Node.js，先返回软件商店安装。非 root 用户应由管理员授予项目目录权限，或在确认使用正确版本后执行 `sudo env "PATH=$PATH" npm ci --omit=dev`。
 
-复制配置模板并编辑：
+宝塔 Node 项目直接读取项目根目录的 `.env`。复制配置模板并编辑 `/opt/orbit-dca/.env`：
 
 ```bash
-sudo install -d -m 0750 /etc/orbit-dca
-sudo install -m 0600 deploy/environment.example /etc/orbit-dca/environment
-sudoedit /etc/orbit-dca/environment
+cd /opt/orbit-dca
+install -o www -g www -m 0600 deploy/environment.example .env
+sudoedit .env
 ```
 
 至少填写这些值：
@@ -159,16 +159,7 @@ curl -u admin:登录密码 http://127.0.0.1:8787/api/health
 - 监听端口：`8787`；
 - 项目名称：`orbit-dca`。
 
-应用自动读取的是 `/opt/orbit-dca/.env`，不会自动读取 `.environment` 或 `/etc/orbit-dca/environment`。后者由 systemd 的 `EnvironmentFile` 加载，仅适用于方案 A。
-
-如果已经按第 5 节填写好 `/etc/orbit-dca/environment`，在 root 终端复制为项目 `.env` 并允许 `www` 用户读取。首次部署时执行以下命令（已有 `.env` 时先检查和备份，避免覆盖）：
-
-```bash
-install -o www -g www -m 0600 /etc/orbit-dca/environment /opt/orbit-dca/.env
-install -d -o www -g www -m 0700 /opt/orbit-dca/data
-```
-
-如果配置保存在其他位置，直接在宝塔文件管理中创建 `/opt/orbit-dca/.env`，把登录和数据库配置复制进去，然后设置该文件属主为 `www`、权限为 `600`。文件名必须是 `.env`，不是 `.environment` 或 `.env.txt`。配置与密钥不会提交到 Git。
+应用自动读取的是 `/opt/orbit-dca/.env`，不会自动读取 `/etc/orbit-dca/environment`。后者由 systemd 的 `EnvironmentFile` 加载，仅适用于方案 A。文件名必须是 `.env`，不是 `.environment` 或 `.env.txt`。配置与密钥不会提交到 Git。
 
 保存后在宝塔中启动或重启项目。也可以通过宝塔项目环境变量传入这些配置；已传入的变量优先于 `.env`。使用此方案时不要再执行 `systemctl enable --now orbit-dca`，更新时使用宝塔的“重启项目”或对应的 PM2 命令。
 
@@ -238,7 +229,7 @@ sudo systemctl restart orbit-dca
 
 - **502 Bad Gateway**：Node 服务没有监听 `127.0.0.1:8787`，检查 `systemctl status orbit-dca` 或宝塔 Node 项目日志。
 - **域名打不开**：检查 DNS、云安全组、防火墙和宝塔站点的域名绑定；80/443 必须从公网可达。
-- **登录页能开但接口失败**：检查 `/etc/orbit-dca/environment` 的 MySQL 配置和日志中的连接错误。
+- **登录页能开但接口失败**：检查 `/opt/orbit-dca/.env` 的 MySQL 配置、文件权限和日志中的连接错误。
 - **更新后端口被占用**：确认只启用了 systemd 或 PM2 其中一种启动方式。
 - **证书申请失败**：确认 DNS 已生效、80 端口未被其他服务占用，且站点没有错误的代理规则。
 
