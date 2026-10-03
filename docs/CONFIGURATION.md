@@ -1,6 +1,6 @@
 # 配置说明
 
-原生 Node 启动读取项目根目录 `.env`，已存在的进程环境变量优先。systemd 使用 `/etc/orbit-dca/environment`。Docker 使用 `deploy/docker.env.example`，Compose 仅把必要字段传入容器。
+原生 Node 启动读取项目根目录 `.env`，已存在的进程环境变量优先。生产 systemd 使用 `/etc/orbit-dca/environment`。
 
 ## 网站和登录
 
@@ -13,7 +13,7 @@
 | `DEFAULT_TIMEZONE` | `Asia/Shanghai` | 默认计划时区；原生运行也应设置进程 `TZ` 为同一个时区 |
 | `DATA_DIR` | 项目 `data/` | 旧 JSON 数据迁移目录；systemd 使用 `/var/lib/orbit-dca` |
 
-首次启动只有在数据库没有认证记录时才使用 `AUTH_USER` / `AUTH_PASSWORD`，密码以随机盐与 scrypt 哈希保存到 `auth_credentials`。数据库失败时不会提前删除初始密码。成功初始化后，Node 原生部署会删除项目 `.env` 中的 `AUTH_PASSWORD`；systemd 外部环境文件和 Docker 的 `.env` 由部署者自行管理。配置中的旧密码不会覆盖已有数据库认证。
+首次启动只有在数据库没有认证记录时才使用 `AUTH_USER` / `AUTH_PASSWORD`，密码以随机盐与 scrypt 哈希保存到 `auth_credentials`。数据库失败时不会提前删除初始密码。成功初始化后，Node 原生部署会删除项目 `.env` 中的 `AUTH_PASSWORD`；systemd 外部环境文件由部署者自行管理。配置中的旧密码不会覆盖已有数据库认证。
 
 每次重启会清除内存中的登录会话，需要重新登录。建议用 HTTPS 保护传输中的密码和会话。
 
@@ -21,7 +21,7 @@
 
 | 变量 | 示例 / 默认值 | 用途 |
 | --- | --- | --- |
-| `MYSQL_HOST` | 必填 | 数据库主机；原生本机为 `127.0.0.1`，Compose 内为 `mysql` |
+| `MYSQL_HOST` | 必填 | 数据库主机；同机 MySQL 使用 `127.0.0.1` |
 | `MYSQL_PORT` | `3306` | 数据库端口 |
 | `MYSQL_DATABASE` | `orbit_dca` | 数据库名，只能包含字母、数字、下划线 |
 | `MYSQL_USER` | 必填 | 专用数据库用户 |
@@ -29,6 +29,8 @@
 | `MYSQL_CONNECTION_LIMIT` | `10` | 连接池上限 |
 
 专用用户需要对所用数据库建表和读写权限；建议先用管理账户创建数据库，然后仅授权该数据库。不会自动安装 MySQL。
+
+原生 MySQL 的监听、字符集和 `skip-name-resolve` 示例见 `deploy/mysql57.cnf.example`。修改 MySQL 配置后需要执行 `sudo systemctl restart mysql`。
 
 表包括 `plans`、`executions`、`markets`、`bitget_credentials`、`notification_settings`、`auth_credentials` 和 `app_settings`。
 
@@ -49,18 +51,9 @@
 
 `ORBIT_ENCRYPTION_KEY` 仅用于解密旧版 AES JSON 迁移文件；没有独立主密钥的旧文件可能依赖旧登录密码哈希，迁移前请保留 `auth.json`。它不改变当前 MySQL 密钥的明文保存方式。
 
-## Docker 专用字段
-
-| 变量 | 默认值 | 用途 |
-| --- | --- | --- |
-| `WEB_BIND_ADDRESS` | `127.0.0.1` | Docker 发布网站端口的地址；直接通过服务器 IP 访问时使用 `0.0.0.0` |
-| `MYSQL_ROOT_PASSWORD` | 必填 | 初始化 Docker MySQL root 密码，与应用密码分开 |
-
-数据库用户与数据库名在完整 Compose 中固定为 `orbit_dca`。数据库不发布主机 3306 端口。MySQL 环境密码只在首次初始化数据卷时生效；修改 `.env` 不会改变已有数据库密码。已有数据卷不要通过删除卷来改密码。
-
 ## 可选便携 MySQL 启动器
 
-`scripts/start-mysql57.mjs` 用于已经安装并初始化的 MySQL 二进制，不下载、不安装、不初始化数据库。推荐新用户使用 Compose 或现有 MySQL 服务。
+`scripts/start-mysql57.mjs` 用于已经安装并初始化的 MySQL 二进制，不下载、不安装、不初始化数据库。生产环境推荐让系统的 `mysql.service` 管理 MySQL；这个启动器主要用于本项目旧服务器的便携安装。
 
 | 变量 | 用途 |
 | --- | --- |

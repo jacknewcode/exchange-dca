@@ -15,30 +15,25 @@
 
 本项目用于个人账户自行部署；每个使用者运行自己的实例和数据库，不是开放注册的多用户交易平台。
 
-## 快速部署（Docker Compose）
+## 快速部署（Node.js + MySQL 5.7）
 
-先安装 [Docker Engine](https://docs.docker.com/engine/install/) 与 [Compose 插件](https://docs.docker.com/compose/install/)。
-
-```bash
-# 下载本仓库，进入项目目录
-cd orbit-dca
-cp deploy/docker.env.example .env
-```
-
-编辑 `.env`，把 `AUTH_PASSWORD`、`MYSQL_PASSWORD` 和 `MYSQL_ROOT_PASSWORD` 改成三个不同的随机长密码。然后：
+项目不依赖 Docker。直接在服务器安装 Node.js 服务和 MySQL 5.7 服务，Node.js 运行网站，MySQL 保存业务数据。
 
 ```bash
-docker compose up -d --build
-docker compose logs -f app
+sudo apt install nodejs npm git
+sudo systemctl enable --now mysql
+sudo git clone https://github.com/<你的账号>/orbit-dca.git /opt/orbit-dca
+cd /opt/orbit-dca
+sudo ./scripts/install-service.sh
+sudoedit /etc/orbit-dca/environment
+sudo systemctl enable --now orbit-dca
 ```
 
-打开 **http://127.0.0.1:8787**，用户名默认 `admin`，密码为配置的 `AUTH_PASSWORD`。Compose 自动运行网站和 MySQL，数据库准备就绪后才启动网站，数据保存在 Docker 数据卷中。
+完整步骤见 [原生部署指南](docs/DEPLOYMENT.md)。打开 **http://服务器地址:8787**，使用 `AUTH_USER` 和 `AUTH_PASSWORD` 登录。MySQL 3306 默认只监听本机，不需要对公网开放。
 
-服务器需要通过 IP 访问时，将 `.env` 中 `WEB_BIND_ADDRESS=0.0.0.0`，然后重新执行 `docker compose up -d`，并在云安全组放行网站端口 **8787**。长期部署请配置 HTTPS；MySQL 3306 不需要对公网开放。
+> MySQL 5.7.44 是 5.7 的最后一个发行版本。项目按现有兼容需求使用 5.7；新部署请确认发行版是否提供对应的 MySQL 5.7 软件源。[MySQL 官方说明](https://dev.mysql.com/doc/relnotes/mysql/5.7/en/news-5-7-44.html)
 
-> MySQL 5.7.44 是 5.7 的最后一个发行版本，已停止常规维护。这里按项目兼容需求保留 5.7；数据库仅在内部使用。[MySQL 官方说明](https://dev.mysql.com/doc/relnotes/mysql/5.7/en/news-5-7-44.html)
-
-## 使用已有 MySQL / 本地开发
+## 本地开发
 
 建议使用 [Node.js 22 或 24 LTS](https://nodejs.org/en/about/previous-releases)。代码最低要求为 Node.js 18.17，旧版本不再推荐用于新部署。
 
@@ -77,7 +72,7 @@ npm start
 
 ## 文档
 
-- [完整部署指南](docs/DEPLOYMENT.md)：Docker、已有 MySQL、systemd、HTTPS、更新、备份和常见故障。
+- [完整部署指南](docs/DEPLOYMENT.md)：Node.js、MySQL 5.7、systemd、HTTPS、更新、备份和常见故障。
 - [配置说明](docs/CONFIGURATION.md)：环境变量、密钥保存方式和数据目录。
 - [GitHub 发布指南](docs/PUBLISHING.md)：如何上传仓库、排除私人数据并发布版本。
 - [贡献指南](CONTRIBUTING.md) · [安全说明](SECURITY.md) · [MIT 许可证](LICENSE)
@@ -99,12 +94,10 @@ src/bitget-client.mjs  Bitget API 客户端
 src/mysql-store.mjs    MySQL 表和存储操作
 web/                   网站静态页面、样式和交互
 scripts/               检查、重启、诊断、服务安装
-compose.yaml           网站 + MySQL 5.7 Docker 部署
-Dockerfile             网站镜像
- deploy/                部署配置模板和 systemd 服务
- docs/                  详细说明
- data/                  旧数据迁移目录（不提交）
- runtime/               后台脚本日志和 PID（不提交）
+deploy/                部署配置模板和 systemd 服务
+docs/                   详细说明
+data/                   旧数据迁移目录（不提交）
+runtime/                后台脚本日志和 PID（不提交）
 ```
 
 项目源码使用 MIT License，允许使用、修改和分发；请保留许可证。项目与 Bitget 无官方关联，不提供收益保证。

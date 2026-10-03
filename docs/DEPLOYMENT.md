@@ -1,109 +1,199 @@
-# 部署指南
+# 原生部署指南（Node.js + MySQL 5.7）
 
-## Docker Compose
+项目不依赖 Docker。Node.js 作为 `orbit-dca.service` 运行，MySQL 5.7 作为系统数据库服务运行。
 
-```bash
-cp deploy/docker.env.example .env
-# 编辑 .env，填写三个随机密码
-docker compose up -d --build
-docker compose logs -f app
-```
+## 1. 安装基础软件
 
-默认网站只发布到 `127.0.0.1:8787`。在服务器上使用 Nginx、Caddy 或 SSH 隧道访问。需要直接通过服务器 IP 访问时设置 `WEB_BIND_ADDRESS=0.0.0.0`，并只在云安全组中向可信来源开放 TCP 8787。MySQL 不发布主机端口，应用通过 Compose 内网访问。
-
-停止应用但保留数据：
+服务器建议使用 Debian/Ubuntu，安装 Node.js 18.17 或更新版本、Git 和 MySQL 5.7。Node.js 建议使用当前 LTS 版本：
 
 ```bash
-docker compose down
+node --version
+npm --version
+mysql --version
+sudo systemctl status mysql --no-pager
 ```
 
-删除数据库和应用数据（不可逆，谨慎执行）：
+如果 Node.js 不存在，可以先安装系统包：
 
 ```bash
-docker compose down -v
+sudo apt update
+sudo apt install -y nodejs npm git
 ```
 
-## 已有 MySQL + systemd
+请确认 `node --version` 满足项目要求。不同 Debian 版本的软件源可能提供不同 MySQL 版本；需要 MySQL 5.7 时应使用对应的 MySQL 官方软件源或已安装的 MySQL 5.7 服务，不要在生产库上直接用其他大版本替换。
 
-安装 Node.js 22/24 LTS、Git 和 MySQL 5.7，创建专用数据库用户，然后：
+启用 MySQL：
+
+```bash
+sudo systemctl enable --now mysql
+```
+
+需要固定本机监听和字符集时，可复制项目模板：
+
+```bash
+sudo cp deploy/mysql57.cnf.example /etc/mysql/mysql.conf.d/orbit-dca.cnf
+sudo systemctl restart mysql
+```
+
+## 2. 创建数据库和专用用户
+
+使用管理员连接 MySQL：
+
+```bash
+sudo mysql
+```
+
+执行下面 SQL，把密码换成随机长密码：
+
+```sql
+CREATE DATABASE orbit_dca CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'orbit_dca'@'127.0.0.1' IDENTIFIED BY '替换为数据库密码';
+GRANT ALL PRIVILEGES ON orbit_dca.* TO 'orbit_dca'@'127.0.0.1';
+FLUSH PRIVILEGES;
+EXIT;
+```
+
+如果数据库或用户已经存在，不要重复执行 `CREATE`；使用 `ALTER USER` 修改密码，并确认权限：
+
+```sql
+ALTER USER 'orbit_dca'@'127.0.0.1' IDENTIFIED BY '新的数据库密码';
+GRANT ALL PRIVILEGES ON orbit_dca.* TO 'orbit_dca'@'127.0.0.1';
+FLUSH PRIVILEGES;
+```
+
+MySQL 只需监听 `127.0.0.1:3306`。远程 Navicat 管理应临时配置限定来源 IP 的账户和安全组规则，不要把 3306 长期开放给所有公网地址。
+
+## 3. 下载并安装 Orbit DCA
 
 ```bash
 sudo git clone https://github.com/<你的账号>/orbit-dca.git /opt/orbit-dca
 cd /opt/orbit-dca
 sudo ./scripts/install-service.sh
+```
+
+安装脚本会：
+
+- 复制源码到 `/opt/orbit-dca`；
+- 使用 `npm ci --omit=dev` 安装生产依赖；
+- 安装 `/etc/systemd/system/orbit-dca.service`；
+- 首次创建 `/etc/orbit-dca/environment` 模板；
+- 不复制项目 `.env`、`data/`、`runtime/` 或旧数据库备份。
+
+第一次运行脚本后先编辑环境文件：
+
+```bash
 sudoedit /etc/orbit-dca/environment
+```
+
+至少填写：
+
+```dotenv
+HOST=0.0.0.0
+PORT=8787
+AUTH_USER=admin
+AUTH_PASSWORD=随机长登录密码
+DEFAULT_TIMEZONE=Asia/Shanghai
+MYSQL_HOST=127.0.0.1
+MYSQL_PORT=3306
+MYSQL_DATABASE=orbit_dca
+MYSQL_USER=orbit_dca
+MYSQL_PASSWORD=数据库密码
+MIN_ORDER_USDT=1
+MAX_ORDER_USDT=500
+```
+
+然后启动：
+
+```bash
+sudo systemctl daemon-reload
 sudo systemctl enable --now orbit-dca
 sudo systemctl status orbit-dca --no-pager
 ```
 
-如果 `/etc/orbit-dca/environment` 还没有创建，安装脚本会复制模板并退出；填写占位密码后再次执行 `sudo ./scripts/install-service.sh`。
+如果服务模板仍有 `REPLACE_WITH_` 占位符，安装脚本会拒绝启动，避免网站在没有登录保护的情况下公开监听。
 
-查看日志：
+## 4. 验证网站
 
 ```bash
-sudo journalctl -u orbit-dca -f
 curl -u admin:登录密码 http://127.0.0.1:8787/api/health
+sudo journalctl -u orbit-dca -n 100 --no-pager
 ```
 
-systemd 服务使用 `/var/lib/orbit-dca` 保存应用数据，服务进程使用动态用户运行。不要手动把 `.env` 复制到 `/opt/orbit-dca`。
+浏览器访问：
 
-## HTTPS 和防火墙
+```text
+http://服务器公网 IP:8787
+```
 
-生产环境建议用反向代理终止 HTTPS，并让应用只监听本机：
+云服务器安全组只放行 TCP 8787；MySQL 3306 保持内网或本机访问。
+
+## 5. 首次使用
+
+1. 使用 `AUTH_USER` 和 `AUTH_PASSWORD` 登录。
+2. 进入“账户与连接 → 管理 API 密钥”，填写 Bitget API Key、Secret Key、Passphrase。
+3. Bitget API 只开启读取和现货交易权限，关闭提现并配置 IP 白名单。
+4. 点击“立即同步”确认余额。
+5. 创建小额定投计划，检查执行记录。
+6. 需要通知时在“系统设置 → 通知设置”填写 Telegram Bot Token 和 Chat ID，先点击测试通知。
+
+应用首次连接数据库时会自动建表。旧版 `data/` 中的 JSON 文件会自动迁移到 MySQL，并改名为 `.legacy.bak`。
+
+## 6. HTTPS 和反向代理
+
+推荐使用 Nginx 或 Caddy 终止 HTTPS，Node 只监听 `127.0.0.1:8787`：
 
 ```text
 浏览器 → HTTPS 443 → Nginx/Caddy → 127.0.0.1:8787 → MySQL 127.0.0.1:3306
 ```
 
-如果直接暴露 8787，必须设置 `AUTH_PASSWORD` 或确保数据库中已有登录认证记录。MySQL 3306 默认不应该开放公网；远程 Navicat 只应临时开放到固定客户端 IP，并使用专用账户。
+如果直接让 Node 监听 `0.0.0.0:8787`，必须配置强登录密码，并在云安全组限制来源 IP。
 
-## 备份和更新
+## 7. 备份、更新和回滚
 
-备份数据库（示例）：
+备份数据库：
 
 ```bash
 mysqldump --single-transaction --routines --triggers \
   -h 127.0.0.1 -u orbit_dca -p orbit_dca > orbit_dca-$(date +%F).sql
 ```
 
-更新源码并重启：
+更新：
 
 ```bash
 cd /opt/orbit-dca
 sudo git pull --ff-only
 sudo npm ci --omit=dev
 sudo systemctl restart orbit-dca
+sudo systemctl status orbit-dca --no-pager
 ```
 
-Docker 更新：
+不要执行 `git clean -fdx`，它可能删除配置、备份和运行数据。升级前先验证数据库备份可恢复。
+
+## 8. 常见问题
+
+### 服务启动失败
 
 ```bash
-git pull --ff-only
-docker compose up -d --build
+sudo journalctl -u orbit-dca -n 100 --no-pager
+sudo systemctl status mysql --no-pager
 ```
 
-不要使用 `git clean -fdx`，它可能删除本地配置、备份和运行数据。升级 MySQL 或应用前先验证备份可恢复。
-
-## 旧 JSON 迁移
-
-早期版本会在 `data/` 生成 `orbit.json`、`markets.json`、`bitget-credentials.json` 等文件。连接 MySQL 后，程序首次启动会自动导入并将旧文件改为 `.legacy.bak`。确认网页计划、执行记录、密钥和通知设置正常后，再按需删除备份。
-
-## 常见问题
-
-### 页面无法打开
-
-检查 `systemctl status orbit-dca` 或 `docker compose logs app`，确认安全组放行的是网站端口而不是 MySQL 端口。反向代理部署时应用端口通常只需本机可访问。
+重点检查 `MYSQL_HOST`、用户、密码和数据库是否正确，以及 Node.js 版本是否满足要求。
 
 ### 数据库连接失败
 
-确认 `MYSQL_HOST` 在 systemd 中是 `127.0.0.1`、在 Compose 中是 `mysql`；确认 MySQL 用户允许来自对应主机且密码一致。Compose 数据卷已初始化后，修改环境变量不会自动修改数据库密码。
+确认 MySQL 正在运行：
+
+```bash
+sudo systemctl restart mysql
+mysql -h 127.0.0.1 -P 3306 -u orbit_dca -p orbit_dca -e 'SELECT 1;'
+```
 
 ### Bitget 请求失败
 
-运行：
-
 ```bash
+cd /opt/orbit-dca
 npm run diagnose:bitget
 ```
 
-依次检查 DNS、公共交易对接口和私有账户接口。核对 API 是否有读取与现货交易权限、IP 白名单、系统时间和余额。
+依次检查 DNS、公共交易对接口、API 权限、IP 白名单、系统时间和账户余额。

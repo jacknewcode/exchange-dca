@@ -1,0 +1,11 @@
+# Copy to /etc/mysql/mysql.conf.d/orbit-dca.cnf on a native MySQL 5.7 host,
+# then run: sudo systemctl restart mysql
+[mysqld]
+bind-address=127.0.0.1
+port=3306
+character-set-server=utf8mb4
+collation-server=utf8mb4_unicode_ci
+skip-name-resolve
+
+[client]
+default-character-set=utf8mb4
