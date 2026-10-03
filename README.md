@@ -66,7 +66,7 @@ npm run check
 npm start
 ```
 
-默认打开 **http://127.0.0.1:8787**。Linux 后台运行可用 `npm run restart`；开机自启请使用 systemd。
+默认打开 **http://127.0.0.1:8787**。 Linux 后台运行可用 `npm run restart`；开机自启请使用 systemd。
 
 ## 首次使用
 
