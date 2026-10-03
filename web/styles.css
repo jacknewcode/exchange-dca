@@ -45,6 +45,17 @@
   .modal-backdrop{padding:10px;align-items:flex-end}.modal{width:100%;max-height:calc(100dvh - 20px);overflow-y:auto;border-radius:14px 14px 10px;padding:19px 16px}.modal-header{margin-bottom:18px}.modal-header h2{font-size:18px}.form-row{grid-template-columns:1fr;gap:0}.modal-actions{position:sticky;bottom:0;background:#fff;padding-top:8px}.modal-actions button{flex:1}
   .toast{bottom:80px;max-width:calc(100% - 28px);text-align:center}
 }
+
+/* 顶部账户菜单 */
+.user-menu-wrap{position:relative}
+.user-menu{cursor:pointer}
+.user-menu:focus-visible{outline:2px solid var(--purple);outline-offset:3px;border-radius:7px}
+.user-dropdown{position:absolute;right:0;top:calc(100% + 10px);z-index:25;min-width:156px;padding:7px;background:#fff;border:1px solid var(--line);border-radius:9px;box-shadow:0 12px 28px rgba(35,36,58,.16)}
+.user-dropdown-label{padding:8px 10px 7px;color:#9a9ba8;font-size:10px;border-bottom:1px solid #f0f0f4}
+.user-dropdown button{width:100%;border:0;background:transparent;color:#555664;text-align:left;border-radius:6px;padding:9px 10px;margin-top:4px;font:600 10px Manrope;cursor:pointer}
+.user-dropdown button:hover{background:#f4f3ff;color:#6258db}
+.user-dropdown button:disabled{opacity:.6;cursor:wait}
+@media (max-width:760px){.user-dropdown{right:-4px;top:calc(100% + 8px)}.user-menu-wrap{display:block}}
 @media (max-width:360px){
   .page-wrap{padding-left:11px;padding-right:11px}.metric-grid{grid-template-columns:1fr}.metric-card{min-height:118px}.nav-item,.settings-link{font-size:9px!important}.nav-icon{font-size:16px}.panel{padding-left:12px;padding-right:12px}
 }

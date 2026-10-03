@@ -293,6 +293,26 @@ function switchView(view) {
 }
 
 document.addEventListener('click', (event) => {
+  const userMenuButton = event.target.closest('#user-menu-button');
+  const userDropdown = $('#user-dropdown');
+  if (userMenuButton) {
+    const open = userDropdown?.hidden !== false;
+    if (userDropdown) userDropdown.hidden = !open;
+    userMenuButton.setAttribute('aria-expanded', String(open));
+    return;
+  }
+  if (event.target.closest('#logout-button')) {
+    const button = event.target.closest('#logout-button');
+    button.disabled = true;
+    fetch('/api/auth/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+      .catch(() => {})
+      .finally(() => { window.location.replace('/login.html'); });
+    return;
+  }
+  if (userDropdown && !event.target.closest('.user-menu-wrap')) {
+    userDropdown.hidden = true;
+    $('#user-menu-button')?.setAttribute('aria-expanded', 'false');
+  }
   const nav = event.target.closest('[data-view]');
   if (nav) switchView(nav.dataset.view);
   if (event.target.closest('#new-plan-button') || event.target.closest('#new-plan-button-2')) openModal();
