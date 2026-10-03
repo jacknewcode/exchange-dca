@@ -2,7 +2,7 @@
 
 这份指南把 Orbit DCA 部署到宝塔面板管理的 Debian/Ubuntu 服务器上。宝塔只负责面板化管理文件、Nginx、证书和服务；应用仍然使用原生 Node.js，业务数据使用 MySQL 5.7，不需要 Docker。
 
-如果服务器已经按 [原生部署指南](DEPLOYMENT.md) 安装了 Node.js、MySQL 和 systemd 服务，不要重复安装第二套数据库。直接从“添加网站”和“配置 HTTPS”开始即可。
+如果服务器已经按 [原生部署指南](DEPLOYMENT.md) 安装了 Node.js 和 MySQL，不要重复安装第二套数据库。直接从“添加网站”和“配置 HTTPS”开始即可。
 
 ## 1. 准备域名和端口
 
@@ -52,7 +52,7 @@ npm --version
 mysql --version
 ```
 
-如果选择项目自带的 systemd 安装脚本，它要求 Node.js 位于 `/usr/bin/node`。宝塔 Node.js 版本管理器安装的 Node.js 路径可能不同；此时要么把系统 Node.js 安装到 `/usr/bin/node`，要么使用宝塔 Node 项目管理器运行应用（见下文），不要让 systemd 和 PM2 同时启动同一个实例。
+宝塔方案统一使用 Node.js 项目管理器/PM2 运行应用，不需要安装或配置 systemd 服务。
 
 ## 4. 创建 MySQL 数据库
 
@@ -129,28 +129,7 @@ Bitget API 密钥和 Telegram 设置在登录后通过网页填写。它们会�
 
 ## 6. 启动 Node.js 服务
 
-### 方案 A：systemd（推荐）
-
-如果 `command -v node` 返回 `/usr/bin/node`，使用项目自带脚本安装服务：
-
-```bash
-cd /opt/orbit-dca
-sudo ./scripts/install-service.sh
-sudo systemctl enable --now orbit-dca
-sudo systemctl status orbit-dca --no-pager
-```
-
-检查本机接口：
-
-```bash
-curl -u admin:登录密码 http://127.0.0.1:8787/api/health
-```
-
-返回健康状态后再配置网站。应用首次连接 MySQL 时会自动建表，并按项目规则迁移旧 JSON 数据。
-
-### 方案 B：宝塔 Node 项目管理器
-
-如果 Node.js 由宝塔版本管理器提供且不在 `/usr/bin/node`，可以在宝塔 Node 项目管理器中新建项目：
+在宝塔 Node 项目管理器中新建项目：
 
 - 项目目录：`/opt/orbit-dca`；
 - 启动选项：自定义启动命令，填写 `node server.mjs`（无需再单独选择启动文件）；
@@ -159,9 +138,9 @@ curl -u admin:登录密码 http://127.0.0.1:8787/api/health
 - 监听端口：`8787`；
 - 项目名称：`orbit-dca`。
 
-应用自动读取的是 `/opt/orbit-dca/.env`，不会自动读取 `/etc/orbit-dca/environment`。后者由 systemd 的 `EnvironmentFile` 加载，仅适用于方案 A。文件名必须是 `.env`，不是 `.environment` 或 `.env.txt`。配置与密钥不会提交到 Git。
+应用自动读取的是 `/opt/orbit-dca/.env`。文件名必须是 `.env`，不是 `.environment` 或 `.env.txt`。配置与密钥不会提交到 Git。
 
-保存后在宝塔中启动或重启项目。也可以通过宝塔项目环境变量传入这些配置；已传入的变量优先于 `.env`。使用此方案时不要再执行 `systemctl enable --now orbit-dca`，更新时使用宝塔的“重启项目”或对应的 PM2 命令。
+保存后在宝塔中启动项目。也可以通过宝塔项目环境变量传入这些配置；已传入的变量优先于 `.env`。应用启动后可用 `curl http://127.0.0.1:8787/api/health` 检查。
 
 ## 7. 在宝塔添加网站和 HTTPS
 
@@ -193,11 +172,11 @@ cd /opt/orbit-dca
 sudo ./scripts/reset-password.sh
 ```
 
-脚本会隐藏输入新密码，生成随机盐和 scrypt 哈希并更新 MySQL 的 `auth_credentials` 表，然后自动重启正在运行的 systemd 或宝塔 PM2 项目。Bitget API、Telegram、定投计划和执行记录不会被删除。密码至少 8 个字符。
+脚本会隐藏输入新密码，生成随机盐和 scrypt 哈希并更新 MySQL 的 `auth_credentials` 表，然后自动重启宝塔 PM2 项目。Bitget API、Telegram、定投计划和执行记录不会被删除。密码至少 8 个字符。
 
 ## 9. 部署完成后的更新
 
-项目已经提供一键更新脚本。下面命令适用于方案 A（systemd），它会自动备份数据库、拉取 `main`、安装生产依赖、重启服务并检查健康状态：
+项目已经提供一键更新脚本。它会自动备份数据库、拉取 `main`、安装生产依赖、重启宝塔 PM2 项目并检查健康状态：
 
 ```bash
 cd /opt/orbit-dca
@@ -212,19 +191,13 @@ sudo ./scripts/update.sh
 sudo ./scripts/update.sh --skip-backup
 ```
 
-使用方案 B（宝塔 Node 项目管理器/PM2）时也可以使用同一脚本。脚本会读取 `/opt/orbit-dca/.env`，自动寻找宝塔 Node.js 的 `pm2`，并以项目运行用户（默认 `www`）重启 `orbit-dca`，不需要再回面板手动点击重启：
-
-```bash
-sudo ./scripts/update.sh
-```
-
-如果项目不是用 `www` 用户运行，可以指定实际用户：
+脚本会读取 `/opt/orbit-dca/.env`，自动寻找宝塔 Node.js 的 `pm2`，并以项目运行用户（默认 `www`）重启 `orbit-dca`，不需要再回面板手动点击重启。如果项目不是用 `www` 用户运行，可以指定实际用户：
 
 ```bash
 sudo ORBIT_DCA_PM2_USER=实际运行用户 ./scripts/update.sh
 ```
 
-脚本会自动恢复 Git 已跟踪文件的本地修改后继续更新；`.env`、`data/`、`runtime/` 和 `node_modules/` 等未跟踪运行文件会保留。不要让 systemd 和 PM2 同时运行，否则会出现端口占用和重复执行定投。
+脚本会自动恢复 Git 已跟踪文件的本地修改后继续更新；`.env`、`data/`、`runtime/` 和 `node_modules/` 等未跟踪运行文件会保留。不要同时启动多个 PM2 实例，否则会出现端口占用和重复执行定投。
 
 ## 10. 更新失败时回滚
 
@@ -246,7 +219,7 @@ sudo systemctl restart orbit-dca
 - **502 Bad Gateway**：Node 服务没有监听 `127.0.0.1:8787`，检查 `systemctl status orbit-dca` 或宝塔 Node 项目日志。
 - **域名打不开**：检查 DNS、云安全组、防火墙和宝塔站点的域名绑定；80/443 必须从公网可达。
 - **登录页能开但接口失败**：检查 `/opt/orbit-dca/.env` 的 MySQL 配置、文件权限和日志中的连接错误。
-- **更新后端口被占用**：确认只启用了 systemd 或 PM2 其中一种启动方式。
+- **更新后端口被占用**：确认只运行了一个 `orbit-dca` PM2 实例。
 - **证书申请失败**：确认 DNS 已生效、80 端口未被其他服务占用，且站点没有错误的代理规则。
 
 相关官方文档：[宝塔快速安装](https://docs.bt.cn/getting-started/quick-installation-of-bt-panel/)、[Node.js/PM2 部署](https://docs.bt.cn/practical-tutorials/nodejs-pm2-deployment)。
