@@ -1,0 +1,27 @@
+[Unit]
+Description=Orbit DCA Bitget Console
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+DynamicUser=yes
+WorkingDirectory=/opt/orbit-dca
+ExecStart=/usr/bin/node /opt/orbit-dca/server.mjs
+EnvironmentFile=/etc/orbit-dca/environment
+Environment=TZ=Asia/Shanghai
+StateDirectory=orbit-dca
+StateDirectoryMode=0700
+Environment=DATA_DIR=/var/lib/orbit-dca
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+
+[Install]
+WantedBy=multi-user.target
+

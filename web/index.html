@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Bitget 现货定投控制台" />
+    <title>Orbit DCA · Bitget 定投控制台</title>
+    <link rel="stylesheet" href="./styles.css?v=settings-v18" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark"><span></span><span></span><span></span></div>
+          <div><strong>控制台</strong></div>
+        </div>
+        <div class="workspace-switcher">
+          <div class="avatar">L</div>
+          <div><strong>主账户</strong><small>Bitget · 现货</small></div>
+          <span class="chevron">⌄</span>
+        </div>
+        <nav class="nav-list" aria-label="主导航">
+          <button class="nav-item active" data-view="overview"><span class="nav-icon">◈</span>总览</button>
+          <button class="nav-item" data-view="plans"><span class="nav-icon">◫</span>定投计划 <em id="plan-count">0</em></button>
+          <button class="nav-item" data-view="executions"><span class="nav-icon">↗</span>执行记录</button>
+          <button class="nav-item" data-view="account"><span class="nav-icon">◉</span>账户与连接</button>
+        </nav>
+        <div class="sidebar-bottom">
+          <div class="system-status"><i></i><span id="sidebar-mode-label">连接中…</span><b id="sidebar-mode-status">—</b></div>
+          <button class="settings-link" data-view="settings"><span>⚙</span>系统设置</button>
+          <div class="sidebar-footer">v0.2.0 · Bitget 现货定投</div>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <div class="breadcrumb"><span>工作台</span><b>/</b><strong id="page-label">总览</strong></div>
+          <div class="topbar-actions">
+            <span class="sync-status"><i></i>刚刚同步</span>
+            <button class="icon-button" aria-label="通知">♢<span class="notification-dot"></span></button>
+            <button class="user-menu"><span class="user-avatar">L</span><span>Leo</span><span>⌄</span></button>
+          </div>
+        </header>
+
+        <div class="page-wrap">
+          <section class="view active" id="view-overview">
+            <div class="page-heading">
+              <div><p class="eyebrow" id="today-label">今日 · GMT+8</p><h1><span id="greeting-label">早上好</span>，Leo <span>✦</span></h1><p class="muted">你的自动定投正在按计划运行。</p></div>
+              <button class="primary-button" id="new-plan-button"><span>＋</span> 新建定投计划</button>
+            </div>
+            <div class="metric-grid">
+              <article class="metric-card accent-lilac"><div class="metric-label">本月投入 <span>ⓘ</span></div><div class="metric-value" id="monthly-investment">0.00 <small>USDT</small></div><div class="metric-trend neutral" id="monthly-investment-note">暂无执行记录</div><div class="sparkline purple"></div></article>
+              <article class="metric-card accent-cyan"><div class="metric-label">累计实盘投入 <span>ⓘ</span></div><div class="metric-value" id="accumulated-buy">0.00 <small>USDT</small></div><div class="metric-trend neutral" id="accumulated-buy-note">暂无实盘成交</div><div class="sparkline cyan"></div></article>
+              <article class="metric-card accent-green"><div class="metric-label">运行中的计划</div><div class="metric-value" id="running-plan-total">0 <small>个</small></div><div class="metric-trend neutral" id="running-plan-note">暂无运行中的计划</div><div class="mini-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></article>
+              <article class="metric-card accent-orange"><div class="metric-label">下次执行</div><div class="metric-value compact" id="next-run-value">暂无</div><div class="metric-trend neutral" id="next-run-note">暂无排期</div><div class="countdown"><b id="next-run-countdown">—</b></div></article>
+            </div>
+            <div class="content-grid">
+              <article class="panel plan-panel"><div class="panel-heading"><div><h2>运行中的计划</h2><p>自动执行中的定投任务</p></div><button class="text-button" data-view="plans">查看全部 <span>→</span></button></div><div id="overview-plan-list" class="plan-list"></div></article>
+              <article class="panel next-panel"><div class="panel-heading"><div><h2>即将执行</h2><p>未来 7 天的计划安排</p></div><button class="icon-button subtle" aria-label="日历">▣</button></div><div id="upcoming-events"><div class="empty-state"><strong>暂无排期</strong><span>创建并启用定投计划后会显示在这里。</span></div></div></article>
+            </div>
+            <article class="panel executions-panel"><div class="panel-heading"><div><h2>最近执行</h2><p>最近 30 天的自动下单记录</p></div><button class="text-button" data-view="executions">查看记录 <span>→</span></button></div><div class="table-wrap"><table><thead><tr><th>执行时间</th><th>计划</th><th>方向</th><th>投入金额</th><th>成交均价</th><th>状态</th></tr></thead><tbody id="overview-execution-table"></tbody></table></div></article>
+          </section>
+
+          <section class="view" id="view-plans"><div class="page-heading"><div><p class="eyebrow">AUTOMATION</p><h1>定投计划</h1><p class="muted">管理你的自动定投策略和执行频率。</p></div><button class="primary-button" id="new-plan-button-2"><span>＋</span> 新建定投计划</button></div><div class="filter-row"><div class="tabs"><button class="tab active" data-plan-filter="all">全部 <b id="all-count">0</b></button><button class="tab" data-plan-filter="running">运行中 <b id="running-count">0</b></button><button class="tab" data-plan-filter="paused">已暂停 <b id="paused-count">0</b></button></div><div class="search-box">⌕ <input id="plan-search" placeholder="搜索计划或交易对" /></div></div><div id="full-plan-list" class="full-plan-list"></div></section>
+
+          <section class="view" id="view-executions"><div class="page-heading"><div><p class="eyebrow">AUDIT TRAIL</p><h1>执行记录</h1><p class="muted">每次计划执行的订单和成交结果。</p></div><button class="secondary-button" id="export-executions" type="button">⇩ 导出 CSV</button></div><div class="summary-strip"><div><span>执行次数</span><strong id="execution-total">0</strong></div><div><span>成功率</span><strong id="execution-success-rate">—</strong></div><div><span>累计投入</span><strong id="execution-investment-total">0.00 <small>USDT</small></strong></div><div><span>平均手续费</span><strong>—</strong></div></div><article class="panel executions-panel"><div class="table-wrap"><table><thead><tr><th>执行时间</th><th>计划</th><th>交易对</th><th>方向</th><th>设定金额</th><th>成交数量</th><th>成交均价</th><th>状态</th></tr></thead><tbody id="full-execution-table"></tbody></table></div></article></section>
+
+          <section class="view" id="view-account"><div class="page-heading"><div><p class="eyebrow">CONNECTIONS</p><h1>账户与连接</h1><p class="muted">管理交易所连接、权限和账户余额。</p></div><button class="secondary-button">＋ 添加交易所</button></div><div class="account-grid"><article class="panel balance-panel"><div class="panel-heading"><div><h2>账户余额</h2><p>Bitget · 主账户</p></div><span class="connected-tag"><i></i>已连接</span></div><div class="balance-total">— <small>USDT</small></div><div class="balance-items"><div><span>可用余额</span><b id="available-balance">— USDT</b></div><div><span>冻结余额</span><b id="frozen-balance">— USDT</b></div></div><div class="balance-footer"><span id="balance-sync-time">最后同步：—</span><button class="text-button" id="sync-balance">立即同步 ↻</button></div></article><article class="panel connection-panel"><div class="panel-heading"><div><h2>API 连接</h2><p>用于自动下单的交易所权限</p></div><button class="icon-button subtle">⋮</button></div><div class="connection-row"><span class="exchange-logo">B</span><div><strong>Bitget API</strong><span id="api-key-mask">尚未配置</span></div><span class="permission-tag" id="api-permission">未连接</span></div><div class="security-note"><span>⌁</span><div><strong>密钥已保存</strong><p>请关闭提现权限 · 密钥保存在服务器 MySQL 中</p></div></div><button class="outline-button" id="manage-api-key">管理 API 密钥</button></article></div><article class="panel assets-panel"><div class="panel-heading"><div><h2>账户币种</h2><p>Bitget 主账户中的资产数量</p></div><span class="muted" id="asset-count">—</span></div><div class="asset-table-head"><span>币种</span><span>可用数量</span><span>冻结数量</span><span>总数量</span></div><div id="asset-list" class="asset-list"><div class="empty-state"><strong>正在加载资产</strong><span>同步 Bitget 账户余额后显示。</span></div></div></article><div class="info-callout"><span>✦</span><div><strong id="account-mode-title">实盘交易模式已开启</strong><p id="account-mode-description">立即投入和定时任务会向 Bitget 提交真实订单。</p></div><button class="text-button">了解更多 →</button></div></section>
+
+          <section class="view" id="view-settings"><div class="page-heading"><div><p class="eyebrow">PREFERENCES</p><h1>系统设置</h1><p class="muted">配置执行规则、通知和安全选项。</p></div><button class="primary-button" id="save-settings">保存设置</button></div><div class="settings-layout"><div class="settings-nav"><button class="settings-tab active" data-settings-tab="execution">执行偏好</button><button class="settings-tab" data-settings-tab="notifications">通知设置</button><button class="settings-tab" data-settings-tab="security">安全与权限</button></div><article class="panel settings-panel"><div class="setting-section" data-settings-panel="execution"><h2>执行偏好</h2><p>新建计划时使用的默认参数。</p><label>默认时区<select data-setting="timezone"><option>Asia/Shanghai (GMT+8)</option><option>UTC</option></select></label><label>错过执行时间<select data-setting="missedExecution"><option value="skip">跳过本次执行</option><option value="catchup">立即补执行</option></select></label><label>订单类型<select data-setting="orderType"><option value="market">市价单</option><option value="limit">限价单</option></select></label><div class="setting-callout"><strong>实盘交易模式已启用</strong><span>所有立即投入和定时任务都会提交 Bitget 真实订单。</span></div></div><div class="setting-section" data-settings-panel="notifications" hidden><h2>通知设置</h2><p>每次定投订单提交或执行失败时发送 Telegram 通知。</p><label class="setting-check"><input type="checkbox" data-setting="telegramEnabled" id="telegram-enabled" />启用 Telegram 通知</label><label>Bot Token<input data-setting="telegramBotToken" id="telegram-bot-token" type="password" autocomplete="new-password" placeholder="例如 123456:ABC…" /></label><label>Chat ID<input data-setting="telegramChatId" id="telegram-chat-id" type="text" inputmode="numeric" placeholder="例如 -1001234567890" /></label><label class="setting-check"><input type="checkbox" data-setting="telegramNotifyFailures" id="telegram-notify-failures" checked />同时通知执行失败</label><div class="setting-callout"><strong id="telegram-status">尚未配置</strong><span>Bot Token 只保存于服务器，不会显示在页面上。保存后可点击“测试通知”验证。</span></div><button type="button" class="outline-button" id="test-telegram">测试通知</button></div><div class="setting-section" data-settings-panel="security" hidden><h2>安全与权限</h2><p>查看当前访问保护和交易密钥状态。</p><div class="security-grid"><div><span>登录保护</span><strong>登录密码已哈希保存</strong></div><div><span>Bitget API</span><strong id="settings-api-status">读取 + 交易</strong></div><div><span>提现权限</span><strong>不需要 · 建议保持关闭</strong></div><div><span>运行模式</span><strong>实盘交易</strong></div></div><button type="button" class="outline-button" id="settings-manage-api">管理 Bitget API 密钥</button></div></article></div></section>
+        </div>
+      </main>
+    </div>
+
+    <div class="modal-backdrop" id="plan-modal" aria-hidden="true"><div class="modal"><div class="modal-header"><div><p class="eyebrow">AUTOMATION</p><h2 id="plan-modal-title">新建定投计划</h2></div><button class="close-button" id="close-modal">×</button></div><form id="plan-form"><label>计划名称<input name="name" placeholder="例如：BTC 长期定投" required /></label><div class="form-row"><label>交易对<div class="market-picker"><input id="market-search" type="search" placeholder="搜索币种，例如 BTC" autocomplete="off" /><select name="pair" id="market-select" required><option value="BTCUSDT">BTC / USDT</option><option value="ETHUSDT">ETH / USDT</option><option value="SOLUSDT">SOL / USDT</option><option value="BNBUSDT">BNB / USDT</option></select></div><small id="market-status">正在加载 Bitget 交易对…</small></label><label>每次投入<input name="amount" type="number" min="1" step="0.01" value="100" required /><small>USDT</small></label></div><div class="form-row"><label>执行频率<select name="frequency"><option>每天</option><option>每周一</option><option>每周六</option><option>每月 1 日</option></select></label><label>执行时间<input name="time" type="time" value="09:30" required /></label></div><label>信号方向<select name="direction"><option value="buy">买入</option><option value="sell">卖出（即将支持）</option></select></label><div class="form-note"><span>ⓘ</span>交易对来自 Bitget 当前在线 USDT 市场。金额由计划固定，当前只支持买入。</div><div class="modal-actions"><button type="button" class="secondary-button" id="cancel-modal">取消</button><button type="submit" class="primary-button" id="plan-submit-button">创建计划</button></div></form></div></div>
+    <div class="modal-backdrop" id="api-modal" aria-hidden="true"><div class="modal"><div class="modal-header"><div><p class="eyebrow">BITGET CONNECTION</p><h2>管理 API 密钥</h2></div><button class="close-button" id="close-api-modal">×</button></div><form id="api-form"><p class="api-help">密钥保存在服务器 MySQL 中，页面不会回显 Secret Key。</p><label>API Key<input name="apiKey" autocomplete="off" required /></label><label>Secret Key<input name="secretKey" type="password" autocomplete="new-password" required /></label><label>Passphrase<input name="passphrase" type="password" autocomplete="new-password" required /></label><div class="form-note"><span>ⓘ</span>请关闭提现权限，并在 Bitget 设置 IP 白名单。</div><div class="modal-actions"><button type="button" class="secondary-button" id="cancel-api-modal">取消</button><button type="submit" class="primary-button">保存密钥</button></div></form></div></div>
+    <div class="toast" id="toast"><span>✓</span><span id="toast-message">已保存</span></div>
+    <script src="./app.js?v=settings-v24"></script><script src="./api-bridge.js?v=settings-v24"></script>
+  </body>
+</html>
+

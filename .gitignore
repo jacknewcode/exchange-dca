@@ -1,0 +1,17 @@
+# Local secrets and machine-specific configuration.
+.env
+.env.*
+!.env.example
+
+# Runtime state, database exports, caches, logs and local credentials.
+data/*
+!data/.gitkeep
+runtime/*
+!runtime/.gitkeep
+*.log
+
+# Dependencies and editor/OS files.
+node_modules/
+.DS_Store
+.idea/
+.vscode/

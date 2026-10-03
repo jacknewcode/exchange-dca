@@ -1,0 +1,20 @@
+{
+  "name": "orbit-dca-console",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "Self-hosted Bitget spot DCA console with MySQL storage and Telegram notifications",
+  "scripts": {
+    "start": "node server.mjs",
+    "diagnose:bitget": "node scripts/diagnose-bitget.mjs",
+    "check": "node scripts/check.mjs",
+    "restart": "node scripts/restart.mjs"
+  },
+  "engines": {
+    "node": ">=18.17"
+  },
+  "dependencies": {
+    "mysql2": "^3.24.5"
+  },
+  "license": "MIT"
+}

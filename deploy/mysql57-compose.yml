@@ -1,0 +1,21 @@
+services:
+  mysql:
+    image: mysql:5.7.44
+    platform: linux/amd64
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: orbit_dca
+      MYSQL_USER: orbit_dca
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:3306:3306"
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+    volumes:
+      - orbit_dca_mysql:/var/lib/mysql
+
+volumes:
+  orbit_dca_mysql:
