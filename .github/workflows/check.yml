@@ -18,4 +18,4 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
-      - run: bash -n scripts/install-service.sh
+      - run: bash -n scripts/install-service.sh scripts/install-nginx.sh

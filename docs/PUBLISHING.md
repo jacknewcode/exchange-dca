@@ -40,7 +40,7 @@ bash -n scripts/install-service.sh
 git ls-files | grep -E '(^|/)(\.env$|data/|runtime/|.*\.sql$)'
 ```
 
-最后一条不应输出真实配置或运行数据。`.env.example`、`deploy/environment.example` 和文档中的密码必须都是占位符。
+最后一条不应输出真实配置或运行数据。`.env.example`、`deploy/environment.example 和 `deploy/nginx/`` 和文档中的密码必须都是占位符。
 
 ## 账号和历史泄露
 

@@ -17,7 +17,7 @@ sudo systemctl status mysql --no-pager
 
 ```bash
 sudo apt update
-sudo apt install -y nodejs npm git
+sudo apt install -y nodejs npm git nginx certbot python3-certbot-nginx
 ```
 
 请确认 `node --version` 满足项目要求。不同 Debian 版本的软件源可能提供不同 MySQL 版本；需要 MySQL 5.7 时应使用对应的 MySQL 官方软件源或已安装的 MySQL 5.7 服务，不要在生产库上直接用其他大版本替换。
@@ -88,7 +88,7 @@ sudoedit /etc/orbit-dca/environment
 至少填写：
 
 ```dotenv
-HOST=0.0.0.0
+HOST=127.0.0.1
 PORT=8787
 AUTH_USER=admin
 AUTH_PASSWORD=随机长登录密码
@@ -122,10 +122,10 @@ sudo journalctl -u orbit-dca -n 100 --no-pager
 浏览器访问：
 
 ```text
-http://服务器公网 IP:8787
+https://你的域名
 ```
 
-云服务器安全组只放行 TCP 8787；MySQL 3306 保持内网或本机访问。
+先把域名的 A/AAAA 记录指向服务器公网 IP。云服务器安全组只放行 TCP 80 和 443；8787 只允许本机访问，MySQL 3306 保持内网或本机访问。
 
 ## 5. 首次使用
 
@@ -138,15 +138,25 @@ http://服务器公网 IP:8787
 
 应用首次连接数据库时会自动建表。旧版 `data/` 中的 JSON 文件会自动迁移到 MySQL，并改名为 `.legacy.bak`。
 
-## 6. HTTPS 和反向代理
+## 6. Nginx 域名和 HTTPS
 
-推荐使用 Nginx 或 Caddy 终止 HTTPS，Node 只监听 `127.0.0.1:8787`：
+项目提供 Nginx 配置模板，Node 只监听 `127.0.0.1:8787`。域名 DNS 生效后执行：
 
-```text
-浏览器 → HTTPS 443 → Nginx/Caddy → 127.0.0.1:8787 → MySQL 127.0.0.1:3306
+```bash
+cd /opt/orbit-dca
+sudo ./scripts/install-nginx.sh your-domain.example.com
+sudo certbot --nginx --redirect -d your-domain.example.com
 ```
 
-如果直接让 Node 监听 `0.0.0.0:8787`，必须配置强登录密码，并在云安全组限制来源 IP。
+Certbot 会申请证书、将 HTTP 跳转到 HTTPS，并配置自动续期。检查续期：`sudo certbot renew --dry-run`。配置模板位于 `deploy/nginx/orbit-dca.conf.example`。
+
+访问链路为：
+
+```text
+浏览器 → HTTPS 443 → Nginx → 127.0.0.1:8787 → MySQL 127.0.0.1:3306
+```
+
+如果暂时不使用 Nginx，才需要让 Node 监听 `0.0.0.0:8787`；生产环境推荐保持本机监听。
 
 ## 7. 备份、更新和回滚
 

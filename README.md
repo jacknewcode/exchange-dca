@@ -20,16 +20,18 @@
 项目不依赖 Docker。直接在服务器安装 Node.js 服务和 MySQL 5.7 服务，Node.js 运行网站，MySQL 保存业务数据。
 
 ```bash
-sudo apt install nodejs npm git
-sudo systemctl enable --now mysql
+sudo apt install -y nodejs npm git nginx certbot python3-certbot-nginx
+sudo systemctl enable --now mysql nginx
 sudo git clone https://github.com/<你的账号>/orbit-dca.git /opt/orbit-dca
 cd /opt/orbit-dca
 sudo ./scripts/install-service.sh
 sudoedit /etc/orbit-dca/environment
 sudo systemctl enable --now orbit-dca
+sudo ./scripts/install-nginx.sh your-domain.example.com
+sudo certbot --nginx --redirect -d your-domain.example.com
 ```
 
-完整步骤见 [原生部署指南](docs/DEPLOYMENT.md)。打开 **http://服务器地址:8787**，使用 `AUTH_USER` 和 `AUTH_PASSWORD` 登录。MySQL 3306 默认只监听本机，不需要对公网开放。
+完整步骤见 [原生部署指南](docs/DEPLOYMENT.md)。DNS 的 A/AAAA 记录指向服务器后，用 `https://你的域名` 访问。Node.js 只监听本机，MySQL 3306 不需要对公网开放。
 
 > MySQL 5.7.44 是 5.7 的最后一个发行版本。项目按现有兼容需求使用 5.7；新部署请确认发行版是否提供对应的 MySQL 5.7 软件源。[MySQL 官方说明](https://dev.mysql.com/doc/relnotes/mysql/5.7/en/news-5-7-44.html)
 
@@ -94,7 +96,7 @@ src/bitget-client.mjs  Bitget API 客户端
 src/mysql-store.mjs    MySQL 表和存储操作
 web/                   网站静态页面、样式和交互
 scripts/               检查、重启、诊断、服务安装
-deploy/                部署配置模板和 systemd 服务
+deploy/                部署配置、Nginx 和 systemd 服务
 docs/                   详细说明
 data/                   旧数据迁移目录（不提交）
 runtime/                后台脚本日志和 PID（不提交）
