@@ -161,33 +161,29 @@ sudo certbot --nginx --redirect -d your-domain.example.com
 
 ## 8. 部署完成后的更新
 
-每次发布新版本前先备份数据库。下面命令适用于方案 A（systemd）：
+项目已经提供一键更新脚本。下面命令适用于方案 A（systemd），它会自动备份数据库、拉取 `main`、安装生产依赖、重启服务并检查健康状态：
 
 ```bash
-sudo install -d -m 0700 /root/backup/orbit-dca
-sudo mysqldump --single-transaction --routines --triggers \
-  -h 127.0.0.1 -u orbit_dca -p orbit_dca \
-  | sudo tee /root/backup/orbit-dca/orbit_dca-$(date +%F-%H%M).sql >/dev/null
-
 cd /opt/orbit-dca
-sudo git status
-sudo git fetch origin
-sudo git pull --ff-only origin main
-sudo npm ci --omit=dev
-sudo systemctl restart orbit-dca
-sudo systemctl status orbit-dca --no-pager
+sudo ./scripts/update.sh
 ```
 
 然后打开网站检查登录、余额同步、计划列表和执行记录。应用启动时会自动执行兼容的数据库建表或迁移逻辑。
 
-使用方案 B 时，把最后两行替换成宝塔 Node 项目管理器的“重启项目”，或：
+如果已经有其他可恢复的数据库备份，可以跳过本次备份：
 
 ```bash
-pm2 restart orbit-dca --update-env
-pm2 status
+sudo ./scripts/update.sh --skip-backup
 ```
 
-不要让 systemd 和 PM2 同时运行，否则会出现端口占用和重复执行定投。更新前不要执行 `git clean -fdx`，以免删除本地配置、备份或运行数据；`/etc/orbit-dca/environment` 不在 Git 仓库中。
+使用方案 B（宝塔 Node 项目管理器/PM2）时也可以使用同一脚本；它会在没有 `orbit-dca.service` 时尝试重启 PM2 项目：
+
+```bash
+cd /opt/orbit-dca
+sudo ./scripts/update.sh
+```
+
+脚本发现工作目录有未提交改动时会停止，避免更新覆盖本地文件。不要让 systemd 和 PM2 同时运行，否则会出现端口占用和重复执行定投；更新前不要执行 `git clean -fdx`，以免删除本地配置、备份或运行数据。
 
 ## 9. 更新失败时回滚
 

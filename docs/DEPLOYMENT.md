@@ -169,15 +169,14 @@ mysqldump --single-transaction --routines --triggers \
   -h 127.0.0.1 -u orbit_dca -p orbit_dca > orbit_dca-$(date +%F).sql
 ```
 
-更新：
+更新（自动备份数据库、拉取代码、安装依赖、重启服务并检查健康状态）：
 
 ```bash
 cd /opt/orbit-dca
-sudo git pull --ff-only
-sudo npm ci --omit=dev
-sudo systemctl restart orbit-dca
-sudo systemctl status orbit-dca --no-pager
+sudo ./scripts/update.sh
 ```
+
+如果已经有其他可恢复的数据库备份，可以跳过本次备份：`sudo ./scripts/update.sh --skip-backup`。脚本发现工作目录有未提交改动时会停止，避免更新覆盖本地文件。
 
 不要执行 `git clean -fdx`，它可能删除配置、备份和运行数据。升级前先验证数据库备份可恢复。
 

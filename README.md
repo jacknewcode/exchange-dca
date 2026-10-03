@@ -79,7 +79,7 @@ npm start
 
 ## 文档
 
-- [完整部署指南](docs/DEPLOYMENT.md)：Node.js、MySQL 5.7、systemd、HTTPS、更新、备份和常见故障。
+- [完整部署指南](docs/DEPLOYMENT.md)：Node.js、MySQL 5.7、systemd、HTTPS、一键更新、备份和常见故障。
 - [宝塔面板部署](docs/BAOTA.md)：宝塔安装、Node.js/MySQL/Nginx、域名 HTTPS、更新和回滚。
 - [配置说明](docs/CONFIGURATION.md)：环境变量、密钥保存方式和数据目录。
 - [GitHub 发布指南](docs/PUBLISHING.md)：如何上传仓库、排除私人数据并发布版本。
