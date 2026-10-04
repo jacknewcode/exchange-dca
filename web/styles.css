@@ -114,6 +114,14 @@
 .setting-section .setting-check input:checked::after{transform:translateX(16px)}
 .setting-section .setting-check:has(input:checked){border-color:#d9d5ff;background:#f6f5ff;color:#5146c5}
 
+/* 弹窗需要覆盖手机底部导航，操作按钮始终保持可见 */
+.modal-backdrop{z-index:40}
+@media (max-width:760px){
+  .modal-backdrop{z-index:40;padding:10px;align-items:flex-end}
+  .modal{max-height:calc(100dvh - 20px);padding-bottom:10px}
+  .modal-actions{z-index:2;margin:0 -1px;padding:10px 0 2px;background:rgba(255,255,255,.98);border-top:1px solid #f0f0f4}
+}
+
 /* 手机底部导航：五个入口等宽、等高，避免文字和角标挤在一起 */
 @media (max-width:760px){
   .sidebar{gap:3px}
