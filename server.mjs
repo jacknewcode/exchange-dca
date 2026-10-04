@@ -257,8 +257,6 @@ async function loadDb() {
       await mysqlStore.saveNotifications({ ...notificationSettings, updatedAt: new Date().toISOString() });
     }
   }
-  if (notificationSettings.botToken && notificationSettings.chatId) notificationSettings.enabled = true;
-
   config.mode = 'live';
   await mysqlStore.saveSetting('mode', config.mode);
   for (const file of [DB_FILE, MARKET_CACHE_FILE, CREDENTIALS_FILE, SETTINGS_FILE, RUNTIME_CONFIG_FILE, AUTH_FILE]) await archiveLegacyFile(file);
@@ -303,7 +301,7 @@ function notifyExecution(execution) {
     '订单号：' + (execution.orderId || '待确认'),
     '时间：' + execution.createdAt
   ].join('\n');
-  void sendTelegramMessage(text, { force: true })
+  void sendTelegram(text)
     .then(() => console.log('Telegram execution notification sent'))
     .catch((error) => console.error('Telegram notification failed:', error.message));
 }
@@ -641,8 +639,7 @@ async function api(req, res, parsed) {
     const body = await readJson(req);
     const botToken = String(body.botToken || notificationSettings.botToken || '').trim();
     const chatId = String(body.chatId || notificationSettings.chatId || '').trim();
-    // 只要已配置机器人，就自动开启每次定投通知。
-    const enabled = Boolean(botToken && chatId) || Boolean(body.enabled);
+    const enabled = body.enabled === undefined ? Boolean(notificationSettings.enabled) : Boolean(body.enabled);
     const notifyFailures = body.notifyFailures !== false;
     if (enabled && (!botToken || !chatId)) {
       throw new BitgetApiError('启用 Telegram 通知前必须填写 Bot Token 和 Chat ID', { status: 400 });
