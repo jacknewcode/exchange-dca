@@ -11,8 +11,20 @@ function planFromRow(row) {
     id: row.id, name: row.name, symbol: row.symbol, pair: row.pair,
     amount: Number(row.amount), frequency: row.frequency, time: row.time,
     direction: row.direction, timezone: row.timezone, enabled: Boolean(row.enabled),
+    failureCount: Number(row.failure_count || 0),
+    failureThreshold: Number(row.failure_threshold || 3),
     nextRunAt: row.next_run_at || null, createdAt: row.created_at, updatedAt: row.updated_at
   };
+}
+
+async function ensureColumn(pool, table, column, definition) {
+  const [rows] = await pool.query(
+    'SELECT COUNT(*) AS count FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? AND COLUMN_NAME=?',
+    [table, column]
+  );
+  if (!Number(rows[0]?.count)) {
+    await pool.query(`ALTER TABLE ${identifier(table, 'table')} ADD COLUMN ${identifier(column, 'column')} ${definition}`);
+  }
 }
 
 function executionFromRow(row) {
@@ -56,11 +68,15 @@ export async function createMysqlStore(options) {
       direction VARCHAR(16) NOT NULL,
       timezone VARCHAR(64) NOT NULL,
       enabled TINYINT(1) NOT NULL DEFAULT 1,
+      failure_count INT NOT NULL DEFAULT 0,
+      failure_threshold INT NOT NULL DEFAULT 3,
       next_run_at VARCHAR(40) NULL,
       created_at VARCHAR(40) NOT NULL,
       updated_at VARCHAR(40) NOT NULL,
       KEY idx_plans_enabled_next (enabled, next_run_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+  await ensureColumn(pool, 'plans', 'failure_count', 'INT NOT NULL DEFAULT 0');
+  await ensureColumn(pool, 'plans', 'failure_threshold', 'INT NOT NULL DEFAULT 3');
   await pool.query(`
     CREATE TABLE IF NOT EXISTS executions (
       id VARCHAR(80) PRIMARY KEY,
@@ -151,8 +167,8 @@ export async function createMysqlStore(options) {
         await connection.query('DELETE FROM executions');
         await connection.query('DELETE FROM plans');
         for (const plan of plans) await connection.query(
-          `INSERT INTO plans (id,name,symbol,pair,amount,frequency,time,direction,timezone,enabled,next_run_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-          [plan.id, plan.name, plan.symbol, plan.pair || plan.symbol, plan.amount, plan.frequency, plan.time, plan.direction || 'buy', plan.timezone || 'Asia/Shanghai', plan.enabled === false ? 0 : 1, plan.nextRunAt || null, plan.createdAt, plan.updatedAt]
+          `INSERT INTO plans (id,name,symbol,pair,amount,frequency,time,direction,timezone,enabled,failure_count,failure_threshold,next_run_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          [plan.id, plan.name, plan.symbol, plan.pair || plan.symbol, plan.amount, plan.frequency, plan.time, plan.direction || 'buy', plan.timezone || 'Asia/Shanghai', plan.enabled === false ? 0 : 1, Number(plan.failureCount || 0), Number(plan.failureThreshold || 3), plan.nextRunAt || null, plan.createdAt, plan.updatedAt]
         );
         for (const item of executions) await connection.query(
           `INSERT INTO executions (id,scheduled_key,plan_id,plan_name,symbol,direction,amount,source,status,order_id,client_oid,message,qty,filled_quote_amount,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,

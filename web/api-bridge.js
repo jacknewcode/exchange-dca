@@ -16,6 +16,8 @@
       if (!response.ok || payload.ok === false) {
         const error = new Error(payload.error || '请求失败');
         error.uncertain = Boolean(payload.uncertain);
+        error.planPaused = Boolean(payload.planPaused);
+        error.planFailureCount = payload.planFailureCount;
         throw error;
       }
       return payload;

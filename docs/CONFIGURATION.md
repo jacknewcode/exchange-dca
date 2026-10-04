@@ -34,6 +34,10 @@
 
 表包括 `plans`、`executions`、`markets`、`bitget_credentials`、`notification_settings`、`auth_credentials` 和 `app_settings`。
 
+## 定投失败处理
+
+每个定投计划都有“连续失败次数上限”，新建计划默认是 3 次，可设置为 1 到 20 次。每次下单失败都会累计连续失败次数，并在开启 Telegram 失败通知时发送失败原因；成功提交一次订单后计数会清零。达到上限后计划会自动暂停，并再发送一条自动暂停通知。修复 API、余额或交易对问题后，在计划列表中恢复计划即可重新开始计数。
+
 ## 交易
 
 | 变量 | 默认值 | 用途 |

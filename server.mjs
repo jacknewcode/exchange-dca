@@ -302,17 +302,41 @@ function notifyExecution(execution) {
     .catch((error) => console.error('Telegram notification failed:', error.message));
 }
 
-function notifyFailure(plan, error) {
+async function notifyFailure(plan, error) {
+  const reason = error?.message || '未知错误';
+  plan.failureCount = Math.max(0, Number(plan.failureCount || 0)) + 1;
+  const threshold = Math.max(1, Number(plan.failureThreshold || 3));
+  const paused = plan.failureCount >= threshold;
+  if (paused) plan.enabled = false;
+  plan.updatedAt = new Date().toISOString();
+  try {
+    await persistDb();
+  } catch (persistError) {
+    console.error('Failed to persist plan failure state:', persistError.message);
+  }
+
   if (!notificationSettings.enabled || !notificationSettings.notifyFailures) return;
   const text = [
     'Orbit DCA 执行失败',
     '计划：' + plan.name,
     '交易对：' + plan.symbol,
     '金额：' + plan.amount + ' USDT',
-    '原因：' + error.message,
+    '连续失败：' + plan.failureCount + '/' + threshold,
+    '原因：' + reason,
     '时间：' + new Date().toISOString()
   ].join('\n');
   void sendTelegram(text).catch((sendError) => console.error('Telegram notification failed:', sendError.message));
+  if (paused) {
+    const pauseText = [
+      'Orbit DCA 定投已自动暂停',
+      '计划：' + plan.name,
+      '交易对：' + plan.symbol,
+      '原因：连续失败 ' + plan.failureCount + ' 次',
+      '最后失败原因：' + reason,
+      '请修复问题后在计划列表中恢复计划。'
+    ].join('\n');
+    void sendTelegram(pauseText).catch((sendError) => console.error('Telegram pause notification failed:', sendError.message));
+  }
 }
 
 function maskSecret(value) {
@@ -365,7 +389,9 @@ function sendError(res, error) {
     ok: false,
     error: error.message || '服务器错误',
     uncertain: Boolean(error.uncertain),
-    code: error.code || 'INTERNAL_ERROR'
+    code: error.code || 'INTERNAL_ERROR',
+    planPaused: error.planPaused === true,
+    planFailureCount: error.planFailureCount
   });
 }
 
@@ -399,6 +425,14 @@ function orderAmount(value) {
   return Math.round(amount * 100000000) / 100000000;
 }
 
+function failureThreshold(value) {
+  const threshold = Number(value);
+  if (!Number.isInteger(threshold) || threshold < 1 || threshold > 20) {
+    throw new BitgetApiError('连续失败次数上限必须是 1 到 20 的整数', { status: 400 });
+  }
+  return threshold;
+}
+
 function nextRunAt(time = '09:30') {
   const parts = String(time).split(':').map(Number);
   const date = new Date();
@@ -427,6 +461,8 @@ function normalizePlan(input) {
     direction: 'buy',
     timezone: input.timezone || config.timezone,
     enabled: input.enabled !== false,
+    failureCount: Math.max(0, Number.isInteger(Number(input.failureCount)) ? Number(input.failureCount) : 0),
+    failureThreshold: failureThreshold(input.failureThreshold ?? 3),
     nextRunAt: input.nextRunAt || nextRunAt(time),
     createdAt: input.createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString()
@@ -501,6 +537,7 @@ async function executePlanOnce(plan, source) {
   };
   db.executions.unshift(execution);
   if (source === 'scheduler') plan.nextRunAt = nextRunAt(plan.time);
+  plan.failureCount = 0;
   plan.updatedAt = new Date().toISOString();
   await persistDb();
   notifyExecution(execution);
@@ -634,10 +671,15 @@ async function api(req, res, parsed) {
     const plan = findPlan(planMatch[1]);
     if (!plan) throw new BitgetApiError('计划不存在', { status: 404 });
     const patch = await readJson(req);
-    if (patch.enabled !== undefined) plan.enabled = Boolean(patch.enabled);
+    if (patch.enabled !== undefined) {
+      const wasEnabled = plan.enabled;
+      plan.enabled = Boolean(patch.enabled);
+      if (plan.enabled && !wasEnabled) plan.failureCount = 0;
+    }
     if (patch.name !== undefined) plan.name = planName(patch.name);
     if (patch.amount !== undefined) plan.amount = orderAmount(patch.amount);
     if (patch.frequency !== undefined) plan.frequency = String(patch.frequency || plan.frequency);
+    if (patch.failureThreshold !== undefined) plan.failureThreshold = failureThreshold(patch.failureThreshold);
     if (patch.time !== undefined) {
       const normalizedTime = String(patch.time || '').trim().match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
       if (!normalizedTime || Number(normalizedTime[1]) > 23 || Number(normalizedTime[2]) > 59) {
@@ -659,7 +701,9 @@ async function api(req, res, parsed) {
     try {
       execution = await executePlan(plan, 'manual');
     } catch (error) {
-      notifyFailure(plan, error);
+      await notifyFailure(plan, error);
+      error.planPaused = !plan.enabled;
+      error.planFailureCount = plan.failureCount;
       throw error;
     }
     return sendJson(res, 200, { ok: true, data: { ...execution, nextRunAt: plan.nextRunAt } });
@@ -736,7 +780,7 @@ const scheduler = setInterval(async () => {
       await executePlan(plan, 'scheduler');
       console.log('Processed plan ' + plan.name + ' in ' + config.mode + ' mode');
     } catch (error) {
-      notifyFailure(plan, error);
+      await notifyFailure(plan, error);
       console.error('Plan ' + plan.name + ' failed: ' + error.message);
     }
   }

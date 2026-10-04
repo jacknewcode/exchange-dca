@@ -236,12 +236,14 @@ function openModal(plan = null) {
     form.elements.frequency.value = String(plan.frequency || '').split(' · ')[0] || '每天';
     form.elements.time.value = plan.time || '09:30';
     form.elements.direction.value = 'buy';
+    if (form.elements.failureThreshold) form.elements.failureThreshold.value = plan.failureThreshold || 3;
     const search = $('#market-search');
     if (search) search.value = displayPair(plan.pair || plan.symbol);
   } else {
     form.reset();
     form.elements.amount.value = 100;
     form.elements.time.value = '09:30';
+    if (form.elements.failureThreshold) form.elements.failureThreshold.value = 3;
     $('#plan-modal-title').textContent = '新建定投计划';
     $('#plan-submit-button').textContent = '创建计划';
   }
@@ -397,6 +399,11 @@ document.addEventListener('click', (event) => {
       runResults.set(id, { type: 'success', message: '订单已提交，订单号：' + execution.orderId });
       showToast('实盘订单已提交');
     }).catch((error) => {
+      if (error.planPaused) {
+        plan.enabled = false;
+        plan.failureCount = Number(error.planFailureCount || plan.failureCount || 0);
+        renderPlans();
+      }
       const message = (error.uncertain ? '下单结果待确认：' : '立即投入失败：') + error.message;
       runResults.set(id, { type: 'error', message });
       showToast(message);
@@ -444,7 +451,7 @@ $('#plan-form').addEventListener('submit', async (event) => {
   let plan;
   if (editingPlanId) {
     const current = state.plans.find((item) => String(item.id) === String(editingPlanId));
-    const payload = { name: data.get('name'), amount: Number(data.get('amount')), frequency: data.get('frequency'), time: data.get('time') };
+    const payload = { name: data.get('name'), amount: Number(data.get('amount')), frequency: data.get('frequency'), time: data.get('time'), failureThreshold: Number(data.get('failureThreshold') || 3) };
     try {
       const saved = window.orbitApi?.ready
         ? (await window.orbitApi.request('/plans/' + encodeURIComponent(editingPlanId), { method: 'PATCH', body: JSON.stringify(payload) })).data
@@ -461,7 +468,7 @@ $('#plan-form').addEventListener('submit', async (event) => {
   }
   if (window.orbitApi?.ready) {
     try {
-      const response = await window.orbitApi.request('/plans', { method: 'POST', body: JSON.stringify({ name: data.get('name'), symbol: pair, pair, amount: Number(data.get('amount')), frequency: data.get('frequency'), time: data.get('time'), direction: data.get('direction') }) });
+      const response = await window.orbitApi.request('/plans', { method: 'POST', body: JSON.stringify({ name: data.get('name'), symbol: pair, pair, amount: Number(data.get('amount')), frequency: data.get('frequency'), time: data.get('time'), direction: data.get('direction'), failureThreshold: Number(data.get('failureThreshold') || 3) }) });
       const saved = response.data;
       plan = { ...saved, pair: saved.symbol || pair, amount: Number(saved.amount), frequency: `${saved.frequency} · ${saved.time}`, next: saved.nextRunAt ? formatNextRun(new Date(saved.nextRunAt)) : '待安排', ...coinFor(saved.symbol || pair), direction: '买入' };
     } catch (error) {
