@@ -743,15 +743,16 @@ async function api(req, res, parsed) {
   }
   if (pathname === '/api/executions' && req.method === 'DELETE') {
     const body = await readJson(req);
-    if (!Array.isArray(body.ids)) {
+    if (body.all === true) {
       const deleted = db.executions.length;
       db.executions = [];
       await clearPersistedExecutions();
       return sendJson(res, 200, { ok: true, data: { deleted } });
     }
-    const requestedIds = Array.isArray(body.ids)
-      ? [...new Set(body.ids.map((id) => String(id || '').trim()).filter(Boolean))].slice(0, 2000)
-      : [];
+    if (!Array.isArray(body.ids) || !body.ids.length) {
+      throw new BitgetApiError('没有选择要删除的执行记录', { status: 400 });
+    }
+    const requestedIds = [...new Set(body.ids.map((id) => String(id || '').trim()).filter(Boolean))].slice(0, 2000);
     const existingIds = new Set(db.executions.map((item) => String(item.id)));
     const ids = requestedIds.filter((id) => existingIds.has(id));
     const deleted = ids.length;

@@ -477,7 +477,7 @@ document.addEventListener('click', (event) => {
     const button = event.target.closest('#clear-executions');
     if (!window.orbitApi?.ready) { showToast('后端尚未连接'); return; }
     button.disabled = true;
-    window.orbitApi.request('/executions', { method: 'DELETE' })
+    window.orbitApi.request('/executions', { method: 'DELETE', body: JSON.stringify({ all: true }) })
       .then((response) => {
         state.executions = [];
         state.selectedExecutionIds.clear();
