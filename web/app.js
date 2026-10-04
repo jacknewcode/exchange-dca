@@ -1,6 +1,7 @@
 const state = {
   plans: [],
-  executions: []
+  executions: [],
+  selectedExecutionIds: new Set()
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -166,10 +167,31 @@ function statusMarkup(status) {
 }
 
 function renderExecutions() {
-  const rows = state.executions.map((item) => `<tr><td>${item.time}</td><td>${item.plan}</td><td>${item.pair}</td><td class="direction">↗ 买入</td><td>${item.amount}</td><td>${item.qty}</td><td>${item.price}</td><td>${statusMarkup(item.status)}</td></tr>`).join('');
+  const availableIds = new Set(state.executions.map((item) => String(item.id || '')));
+  state.selectedExecutionIds = new Set([...state.selectedExecutionIds].filter((id) => availableIds.has(id)));
+  const rows = state.executions.map((item) => {
+    const id = String(item.id || '');
+    return `<tr><td class="execution-select-cell"><input class="execution-select" type="checkbox" data-execution-id="${id}" aria-label="选择 ${item.plan || '执行记录'}" ${state.selectedExecutionIds.has(id) ? 'checked' : ''} /></td><td>${item.time}</td><td>${item.plan}</td><td>${item.pair}</td><td class="direction">↗ 买入</td><td>${item.amount}</td><td>${item.qty}</td><td>${item.price}</td><td>${statusMarkup(item.status)}</td></tr>`;
+  }).join('');
   $('#overview-execution-table').innerHTML = state.executions.slice(0, 3).map((item) => `<tr><td>${item.time}</td><td>${item.plan}</td><td class="direction">↗ 买入</td><td>${item.amount}</td><td>${item.price}</td><td>${statusMarkup(item.status)}</td></tr>`).join('');
   $('#full-execution-table').innerHTML = rows;
+  updateExecutionSelectionUi();
   renderPlans();
+}
+
+function updateExecutionSelectionUi() {
+  const count = state.selectedExecutionIds.size;
+  const button = $('#delete-selected-executions');
+  if (button) {
+    button.disabled = count === 0;
+    button.textContent = count ? `删除选中 (${count})` : '删除选中';
+  }
+  const selectAll = $('#select-all-executions');
+  const total = state.executions.length;
+  if (selectAll) {
+    selectAll.checked = total > 0 && count === total;
+    selectAll.indeterminate = count > 0 && count < total;
+  }
 }
 
 function renderPlans() {
@@ -384,6 +406,7 @@ document.addEventListener('click', (event) => {
       if (execution.skipped) throw new Error(execution.reason || '该计划已处理过本次执行');
       if (execution.status !== 'submitted' || !execution.orderId) throw new Error('未返回有效的订单编号，请检查执行记录和 Bitget 订单');
       state.executions.unshift({
+        id: execution.id,
         createdAt: execution.createdAt || new Date().toISOString(),
         planId: plan.id,
         time: new Date(execution.createdAt || Date.now()).toLocaleString('zh-CN'),
@@ -429,6 +452,25 @@ document.addEventListener('click', (event) => {
     exportExecutionsCsv();
     return;
   }
+  if (event.target.closest('#delete-selected-executions')) {
+    const ids = [...state.selectedExecutionIds];
+    if (!ids.length) return;
+    if (!window.confirm(`确定删除选中的 ${ids.length} 条执行记录吗？此操作不可恢复。`)) return;
+    const button = event.target.closest('#delete-selected-executions');
+    if (!window.orbitApi?.ready) { showToast('后端尚未连接'); return; }
+    button.disabled = true;
+    window.orbitApi.request('/executions', { method: 'DELETE', body: JSON.stringify({ ids }) })
+      .then((response) => {
+        const selected = new Set(ids);
+        state.executions = state.executions.filter((item) => !selected.has(String(item.id)));
+        state.selectedExecutionIds.clear();
+        renderExecutions();
+        showToast(`已删除 ${Number(response.data?.deleted || 0)} 条执行记录`);
+      })
+      .catch((error) => showToast('删除失败：' + error.message))
+      .finally(() => { button.disabled = false; });
+    return;
+  }
   if (event.target.closest('#clear-executions')) {
     if (!state.executions.length) { showToast('当前没有执行记录'); return; }
     if (!window.confirm(`确定删除全部 ${state.executions.length} 条执行记录吗？此操作不可恢复。`)) return;
@@ -438,6 +480,7 @@ document.addEventListener('click', (event) => {
     window.orbitApi.request('/executions', { method: 'DELETE' })
       .then((response) => {
         state.executions = [];
+        state.selectedExecutionIds.clear();
         renderExecutions();
         showToast(`已删除 ${Number(response.data?.deleted || 0)} 条执行记录`);
       })
@@ -456,6 +499,22 @@ document.addEventListener('click', (event) => {
       .then(() => showToast('Telegram 测试通知已发送'))
       .catch((error) => showToast('测试通知失败：' + error.message))
       .finally(() => { button.disabled = false; });
+  }
+});
+
+document.addEventListener('change', (event) => {
+  const target = event.target;
+  if (target.id === 'select-all-executions') {
+    if (target.checked) state.executions.forEach((item) => state.selectedExecutionIds.add(String(item.id)));
+    else state.selectedExecutionIds.clear();
+    renderExecutions();
+    return;
+  }
+  if (target.matches('.execution-select')) {
+    const id = String(target.dataset.executionId || '');
+    if (target.checked) state.selectedExecutionIds.add(id);
+    else state.selectedExecutionIds.delete(id);
+    updateExecutionSelectionUi();
   }
 });
 

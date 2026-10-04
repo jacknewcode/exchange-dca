@@ -403,6 +403,10 @@ function clearPersistedExecutions() {
   return enqueueSave(() => mysqlStore.clearExecutions());
 }
 
+function deletePersistedExecutions(ids) {
+  return enqueueSave(() => mysqlStore.deleteExecutions(ids));
+}
+
 async function persistRuntimeConfig() {
   await mysqlStore.saveSetting('mode', config.mode);
 }
@@ -738,9 +742,23 @@ async function api(req, res, parsed) {
     return sendJson(res, 200, { ok: true, data: { ...execution, nextRunAt: plan.nextRunAt } });
   }
   if (pathname === '/api/executions' && req.method === 'DELETE') {
-    const deleted = db.executions.length;
-    db.executions = [];
-    await clearPersistedExecutions();
+    const body = await readJson(req);
+    if (!Array.isArray(body.ids)) {
+      const deleted = db.executions.length;
+      db.executions = [];
+      await clearPersistedExecutions();
+      return sendJson(res, 200, { ok: true, data: { deleted } });
+    }
+    const requestedIds = Array.isArray(body.ids)
+      ? [...new Set(body.ids.map((id) => String(id || '').trim()).filter(Boolean))].slice(0, 2000)
+      : [];
+    const existingIds = new Set(db.executions.map((item) => String(item.id)));
+    const ids = requestedIds.filter((id) => existingIds.has(id));
+    const deleted = ids.length;
+    if (deleted) {
+      db.executions = db.executions.filter((item) => !ids.includes(String(item.id)));
+      await deletePersistedExecutions(ids);
+    }
     return sendJson(res, 200, { ok: true, data: { deleted } });
   }
   if (pathname === '/api/executions' && req.method === 'GET') {

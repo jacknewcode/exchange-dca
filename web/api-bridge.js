@@ -203,6 +203,7 @@
       } else if (plansResult.status === 'rejected') console.warn('plans sync failed', plansResult.reason?.message || plansResult.reason);
       if (executionsResult.status === 'fulfilled' && window.orbitUi && Array.isArray(executionsResult.value.data)) {
         window.orbitUi.state.executions = executionsResult.value.data.map((item) => ({
+          id: item.id,
           createdAt: item.createdAt,
           planId: item.planId,
           time: new Date(item.createdAt).toLocaleString('zh-CN'),

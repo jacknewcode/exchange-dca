@@ -173,6 +173,12 @@ export async function createMysqlStore(options) {
     },
     async deletePlan(id) { await pool.query('DELETE FROM plans WHERE id=?', [id]); },
     async clearExecutions() { await pool.query('DELETE FROM executions'); },
+    async deleteExecutions(ids) {
+      if (!ids.length) return 0;
+      const placeholders = ids.map(() => '?').join(',');
+      const [result] = await pool.query(`DELETE FROM executions WHERE id IN (${placeholders})`, ids);
+      return result.affectedRows || 0;
+    },
     async saveExecution(item) {
       await pool.query(
         `INSERT INTO executions (id,scheduled_key,plan_id,plan_name,symbol,direction,amount,source,status,order_id,client_oid,message,qty,filled_quote_amount,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
