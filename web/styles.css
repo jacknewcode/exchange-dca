@@ -63,3 +63,15 @@
   .nav-item{position:relative}
   .assets-panel .asset-table-head{overflow-x:auto}
 }
+
+/* 手机底部导航：五个入口等宽、等高，避免文字和角标挤在一起 */
+@media (max-width:760px){
+  .sidebar{gap:3px}
+  .nav-list{display:contents}
+  .nav-item,.settings-link{flex:1 1 0;height:56px;min-width:0;padding:5px 2px;gap:3px;border-radius:9px;justify-content:center;align-items:center;line-height:1.15}
+  .nav-item.active{background:#7568f2;color:#fff}
+  .nav-icon,.settings-link span{height:19px;display:grid;place-items:center;line-height:19px}
+  .nav-item em{top:4px;right:calc(50% - 24px);margin:0;transform:none;padding:1px 4px;font-size:8px;line-height:12px}
+  .settings-link{order:5;color:#a2a3b4}
+  .settings-link:hover{background:#242536;color:#fff}
+}
