@@ -399,6 +399,10 @@ function deletePersistedPlan(id) {
   return enqueueSave(() => mysqlStore.deletePlan(id));
 }
 
+function clearPersistedExecutions() {
+  return enqueueSave(() => mysqlStore.clearExecutions());
+}
+
 async function persistRuntimeConfig() {
   await mysqlStore.saveSetting('mode', config.mode);
 }
@@ -732,6 +736,12 @@ async function api(req, res, parsed) {
       throw error;
     }
     return sendJson(res, 200, { ok: true, data: { ...execution, nextRunAt: plan.nextRunAt } });
+  }
+  if (pathname === '/api/executions' && req.method === 'DELETE') {
+    const deleted = db.executions.length;
+    db.executions = [];
+    await clearPersistedExecutions();
+    return sendJson(res, 200, { ok: true, data: { deleted } });
   }
   if (pathname === '/api/executions' && req.method === 'GET') {
     return sendJson(res, 200, { ok: true, data: db.executions.slice(0, 200) });

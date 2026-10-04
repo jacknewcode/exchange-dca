@@ -429,6 +429,22 @@ document.addEventListener('click', (event) => {
     exportExecutionsCsv();
     return;
   }
+  if (event.target.closest('#clear-executions')) {
+    if (!state.executions.length) { showToast('当前没有执行记录'); return; }
+    if (!window.confirm(`确定删除全部 ${state.executions.length} 条执行记录吗？此操作不可恢复。`)) return;
+    const button = event.target.closest('#clear-executions');
+    if (!window.orbitApi?.ready) { showToast('后端尚未连接'); return; }
+    button.disabled = true;
+    window.orbitApi.request('/executions', { method: 'DELETE' })
+      .then((response) => {
+        state.executions = [];
+        renderExecutions();
+        showToast(`已删除 ${Number(response.data?.deleted || 0)} 条执行记录`);
+      })
+      .catch((error) => showToast('删除失败：' + error.message))
+      .finally(() => { button.disabled = false; });
+    return;
+  }
   if (event.target.closest('#save-settings')) {
     saveSettings().then(() => showToast('设置已保存')).catch((error) => showToast('设置保存失败：' + error.message));
   }

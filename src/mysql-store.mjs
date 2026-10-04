@@ -172,6 +172,7 @@ export async function createMysqlStore(options) {
       );
     },
     async deletePlan(id) { await pool.query('DELETE FROM plans WHERE id=?', [id]); },
+    async clearExecutions() { await pool.query('DELETE FROM executions'); },
     async saveExecution(item) {
       await pool.query(
         `INSERT INTO executions (id,scheduled_key,plan_id,plan_name,symbol,direction,amount,source,status,order_id,client_oid,message,qty,filled_quote_amount,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
