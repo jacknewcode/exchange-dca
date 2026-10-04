@@ -463,7 +463,7 @@ $('#plan-form').addEventListener('submit', async (event) => {
     try {
       const response = await window.orbitApi.request('/plans', { method: 'POST', body: JSON.stringify({ name: data.get('name'), symbol: pair, pair, amount: Number(data.get('amount')), frequency: data.get('frequency'), time: data.get('time'), direction: data.get('direction') }) });
       const saved = response.data;
-      plan = { ...saved, pair: saved.symbol || pair, amount: Number(saved.amount), frequency: `${saved.frequency} · ${saved.time}`, next: '待安排', ...coinFor(saved.symbol || pair), direction: '买入' };
+      plan = { ...saved, pair: saved.symbol || pair, amount: Number(saved.amount), frequency: `${saved.frequency} · ${saved.time}`, next: saved.nextRunAt ? formatNextRun(new Date(saved.nextRunAt)) : '待安排', ...coinFor(saved.symbol || pair), direction: '买入' };
     } catch (error) {
       showToast('创建失败：' + error.message);
       return;
