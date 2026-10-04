@@ -64,6 +64,56 @@
   .assets-panel .asset-table-head{overflow-x:auto}
 }
 
+/* 通知开关：移动端使用整行开关卡片，避免复选框被输入框规则拉伸 */
+.setting-section .setting-check{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between;
+  gap:12px!important;
+  width:100%;
+  min-height:46px;
+  margin-top:12px!important;
+  padding:11px 13px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:#fafaff;
+  color:#5f6070;
+  font-size:11px;
+  font-weight:600;
+  line-height:1.4;
+}
+.setting-section .setting-check input{
+  appearance:none;
+  -webkit-appearance:none;
+  width:38px!important;
+  height:22px;
+  flex:0 0 38px;
+  order:2;
+  margin:0;
+  padding:0;
+  border:0;
+  border-radius:999px;
+  background:#d9dae4;
+  position:relative;
+  cursor:pointer;
+  transition:background .2s ease;
+}
+.setting-section .setting-check input::after{
+  content:'';
+  position:absolute;
+  top:3px;
+  left:3px;
+  width:16px;
+  height:16px;
+  border-radius:50%;
+  background:#fff;
+  box-shadow:0 1px 3px rgba(34,35,54,.2);
+  transition:transform .2s ease;
+}
+.setting-section .setting-check input:checked{background:var(--purple)}
+.setting-section .setting-check input:checked::after{transform:translateX(16px)}
+.setting-section .setting-check:has(input:checked){border-color:#d9d5ff;background:#f6f5ff;color:#5146c5}
+
 /* 手机底部导航：五个入口等宽、等高，避免文字和角标挤在一起 */
 @media (max-width:760px){
   .sidebar{gap:3px}
