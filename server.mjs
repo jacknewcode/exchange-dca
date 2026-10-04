@@ -42,6 +42,7 @@ const MYSQL_DATABASE = process.env.MYSQL_DATABASE || 'orbit_dca';
 const MYSQL_USER = process.env.MYSQL_USER || '';
 const MYSQL_PASSWORD = process.env.MYSQL_PASSWORD || '';
 const MYSQL_CONNECTION_LIMIT = Number(process.env.MYSQL_CONNECTION_LIMIT || 10);
+const MARKET_REFRESH_INTERVAL_MS = 15 * 60 * 1000;
 const PORT = Number(process.env.PORT || 8787);
 const HOST = process.env.HOST || '127.0.0.1';
 const AUTH_FILE = path.join(DATA_DIR, 'auth.json');
@@ -163,6 +164,7 @@ let db = { plans: [], executions: [] };
 let notificationSettings = { enabled: false, botToken: '', chatId: '', notifyFailures: true };
 let marketCache = null;
 let marketRefreshPromise = null;
+let marketLastRefreshedAt = 0;
 let mysqlStore = null;
 let saveQueue = Promise.resolve();
 const executingPlans = new Set();
@@ -205,9 +207,13 @@ async function loadDb() {
   }
   db = { plans: state.plans, executions: state.executions };
 
-  if (state.markets.length) marketCache = state.markets;
+  if (state.markets.length) {
+    marketCache = state.markets;
+    marketLastRefreshedAt = Date.now();
+  }
   else if (Array.isArray(legacyMarkets) && legacyMarkets.length) {
     marketCache = legacyMarkets;
+    marketLastRefreshedAt = Date.now();
     await mysqlStore.replaceMarkets(legacyMarkets);
   }
 
@@ -310,7 +316,7 @@ async function notifyFailure(plan, error) {
   if (paused) plan.enabled = false;
   plan.updatedAt = new Date().toISOString();
   try {
-    await persistDb();
+    await persistPlan(plan);
   } catch (persistError) {
     console.error('Failed to persist plan failure state:', persistError.message);
   }
@@ -351,6 +357,7 @@ async function persistCredentials(credentials) {
 }
 
 function refreshMarketCache() {
+  if (marketCache?.length && Date.now() - marketLastRefreshedAt < MARKET_REFRESH_INTERVAL_MS) return Promise.resolve(marketCache);
   if (marketRefreshPromise) return marketRefreshPromise;
   marketRefreshPromise = Promise.race([
     bitget.getSymbols(),
@@ -359,19 +366,39 @@ function refreshMarketCache() {
     const online = rows.filter((row) => row.quoteCoin === 'USDT' && row.status === 'online');
     if (online.length) {
       marketCache = online;
+      marketLastRefreshedAt = Date.now();
       await mysqlStore.replaceMarkets(online);
-      await persistDb();
     }
     return online;
-  }).catch(() => []).finally(() => {
+  }).catch(() => {
+    marketLastRefreshedAt = Date.now();
+    return [];
+  }).finally(() => {
     marketRefreshPromise = null;
   });
   return marketRefreshPromise;
 }
 
-function persistDb() {
-  saveQueue = saveQueue.then(() => mysqlStore.replaceState(db.plans, db.executions));
+function enqueueSave(task) {
+  saveQueue = saveQueue.catch((error) => {
+    console.error('Previous database write failed:', error.message);
+  }).then(task);
   return saveQueue;
+}
+
+function persistPlan(plan) {
+  return enqueueSave(() => mysqlStore.savePlan(plan));
+}
+
+function persistExecutionAndPlan(execution, plan) {
+  return enqueueSave(async () => {
+    await mysqlStore.saveExecution(execution);
+    await mysqlStore.savePlan(plan);
+  });
+}
+
+function deletePersistedPlan(id) {
+  return enqueueSave(() => mysqlStore.deletePlan(id));
 }
 
 async function persistRuntimeConfig() {
@@ -536,10 +563,11 @@ async function executePlanOnce(plan, source) {
     message: 'Bitget 已接受订单，等待成交确认'
   };
   db.executions.unshift(execution);
+  if (db.executions.length > 2000) db.executions.length = 2000;
   if (source === 'scheduler') plan.nextRunAt = nextRunAt(plan.time);
   plan.failureCount = 0;
   plan.updatedAt = new Date().toISOString();
-  await persistDb();
+  await persistExecutionAndPlan(execution, plan);
   notifyExecution(execution);
   return execution;
 }
@@ -656,7 +684,7 @@ async function api(req, res, parsed) {
   if (pathname === '/api/plans' && req.method === 'POST') {
     const plan = normalizePlan(await readJson(req));
     db.plans = [plan, ...db.plans.filter((item) => item.id !== plan.id)];
-    await persistDb();
+    await persistPlan(plan);
     return sendJson(res, 201, { ok: true, data: plan });
   }
   const planMatch = pathname.match(/^\/api\/plans\/([^/]+)$/);
@@ -664,7 +692,7 @@ async function api(req, res, parsed) {
     const before = db.plans.length;
     db.plans = db.plans.filter((item) => item.id !== planMatch[1]);
     if (db.plans.length === before) throw new BitgetApiError('计划不存在', { status: 404 });
-    await persistDb();
+    await deletePersistedPlan(planMatch[1]);
     return sendJson(res, 200, { ok: true, data: { id: planMatch[1], deleted: true } });
   }
   if (planMatch && req.method === 'PATCH') {
@@ -689,7 +717,7 @@ async function api(req, res, parsed) {
       plan.nextRunAt = nextRunAt(plan.time);
     }
     plan.updatedAt = new Date().toISOString();
-    await persistDb();
+    await persistPlan(plan);
     return sendJson(res, 200, { ok: true, data: plan });
   }
   const runMatch = pathname.match(/^\/api\/plans\/([^/]+)\/run$/);

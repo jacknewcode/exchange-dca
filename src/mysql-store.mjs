@@ -145,6 +145,10 @@ export async function createMysqlStore(options) {
       setting_value TEXT NOT NULL,
       updated_at VARCHAR(40) NOT NULL
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+  const [executionCutoffRows] = await pool.query('SELECT created_at FROM executions ORDER BY created_at DESC LIMIT 1 OFFSET 1999');
+  if (executionCutoffRows[0]?.created_at) {
+    await pool.query('DELETE FROM executions WHERE created_at < ?', [executionCutoffRows[0].created_at]);
+  }
 
   return {
     async loadState() {
@@ -159,6 +163,21 @@ export async function createMysqlStore(options) {
         maxOrderQty: row.max_order_qty == null ? undefined : Number(row.max_order_qty),
         pricePrecision: row.price_precision, quantityPrecision: row.quantity_precision
       })) };
+    },
+    async savePlan(plan) {
+      await pool.query(
+        `INSERT INTO plans (id,name,symbol,pair,amount,frequency,time,direction,timezone,enabled,failure_count,failure_threshold,next_run_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+         ON DUPLICATE KEY UPDATE name=VALUES(name),symbol=VALUES(symbol),pair=VALUES(pair),amount=VALUES(amount),frequency=VALUES(frequency),time=VALUES(time),direction=VALUES(direction),timezone=VALUES(timezone),enabled=VALUES(enabled),failure_count=VALUES(failure_count),failure_threshold=VALUES(failure_threshold),next_run_at=VALUES(next_run_at),updated_at=VALUES(updated_at)`,
+        [plan.id, plan.name, plan.symbol, plan.pair || plan.symbol, plan.amount, plan.frequency, plan.time, plan.direction || 'buy', plan.timezone || 'Asia/Shanghai', plan.enabled === false ? 0 : 1, Number(plan.failureCount || 0), Number(plan.failureThreshold || 3), plan.nextRunAt || null, plan.createdAt, plan.updatedAt]
+      );
+    },
+    async deletePlan(id) { await pool.query('DELETE FROM plans WHERE id=?', [id]); },
+    async saveExecution(item) {
+      await pool.query(
+        `INSERT INTO executions (id,scheduled_key,plan_id,plan_name,symbol,direction,amount,source,status,order_id,client_oid,message,qty,filled_quote_amount,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+         ON DUPLICATE KEY UPDATE status=VALUES(status),order_id=VALUES(order_id),client_oid=VALUES(client_oid),message=VALUES(message),qty=VALUES(qty),filled_quote_amount=VALUES(filled_quote_amount)`,
+        [item.id, item.scheduledKey || null, item.planId, item.planName, item.symbol, item.direction || 'buy', item.amount, item.source || 'manual', item.status, item.orderId || null, item.clientOid || null, item.message || null, item.qty ?? null, item.filledQuoteAmount ?? null, item.createdAt]
+      );
     },
     async replaceState(plans, executions) {
       const connection = await pool.getConnection();

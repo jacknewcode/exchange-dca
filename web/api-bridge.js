@@ -177,60 +177,46 @@
       setSync('实盘交易已连接', true);
       document.body.dataset.tradingMode = health.mode;
       renderMode(health.mode);
-      try {
-        const credentials = await request('/settings/bitget');
-        renderApiStatus(credentials.data);
-      } catch (error) {
-        console.warn('API credential status skipped', error.message);
-      }
-      try {
-        const notifications = await request('/settings/notifications');
-        renderNotificationStatus(notifications.data);
-      } catch (error) {
-        console.warn('notification settings skipped', error.message);
-      }
-
       loadMarkets();
-
-      try {
-        const plans = await request('/plans');
-        if (window.orbitUi && Array.isArray(plans.data)) {
-          window.orbitUi.state.plans = plans.data.map((plan) => ({
-            ...plan,
-            pair: plan.symbol || plan.pair,
-            amount: Number(plan.amount),
-            frequency: plan.frequency + ' · ' + plan.time,
-            next: plan.nextRunAt ? new Date(plan.nextRunAt).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '待安排',
-            ...window.orbitUi.coinFor(plan.symbol || plan.pair),
-            direction: '买入'
-          }));
-          window.orbitUi.renderPlans();
-        }
-      } catch (error) {
-        console.warn('plans sync failed', error.message);
-      }
-
-      try {
-        const executions = await request('/executions');
-        if (window.orbitUi && Array.isArray(executions.data)) {
-          window.orbitUi.state.executions = executions.data.map((item) => ({
-            createdAt: item.createdAt,
-            planId: item.planId,
-            time: new Date(item.createdAt).toLocaleString('zh-CN'),
-            plan: item.planName,
-            pair: item.symbol,
-            amount: Number(item.amount).toFixed(2) + ' USDT',
-            qty: item.qty || item.baseQuantity || '—',
-            filledQuoteAmount: item.filledQuoteAmount || item.quoteAmount || 0,
-            orderId: item.orderId || '',
-            price: item.status === 'simulated' ? '模拟价格' : '已提交',
-            status: item.status
-          }));
-          window.orbitUi.renderExecutions();
-        }
-      } catch (error) {
-        console.warn('executions sync failed', error.message);
-      }
+      const results = await Promise.allSettled([
+        request('/settings/bitget'),
+        request('/settings/notifications'),
+        request('/plans'),
+        request('/executions')
+      ]);
+      const [credentialsResult, notificationsResult, plansResult, executionsResult] = results;
+      if (credentialsResult.status === 'fulfilled') renderApiStatus(credentialsResult.value.data);
+      else console.warn('API credential status skipped', credentialsResult.reason?.message || credentialsResult.reason);
+      if (notificationsResult.status === 'fulfilled') renderNotificationStatus(notificationsResult.value.data);
+      else console.warn('notification settings skipped', notificationsResult.reason?.message || notificationsResult.reason);
+      if (plansResult.status === 'fulfilled' && window.orbitUi && Array.isArray(plansResult.value.data)) {
+        window.orbitUi.state.plans = plansResult.value.data.map((plan) => ({
+          ...plan,
+          pair: plan.symbol || plan.pair,
+          amount: Number(plan.amount),
+          frequency: plan.frequency + ' · ' + plan.time,
+          next: plan.nextRunAt ? new Date(plan.nextRunAt).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '待安排',
+          ...window.orbitUi.coinFor(plan.symbol || plan.pair),
+          direction: '买入'
+        }));
+        window.orbitUi.renderPlans();
+      } else if (plansResult.status === 'rejected') console.warn('plans sync failed', plansResult.reason?.message || plansResult.reason);
+      if (executionsResult.status === 'fulfilled' && window.orbitUi && Array.isArray(executionsResult.value.data)) {
+        window.orbitUi.state.executions = executionsResult.value.data.map((item) => ({
+          createdAt: item.createdAt,
+          planId: item.planId,
+          time: new Date(item.createdAt).toLocaleString('zh-CN'),
+          plan: item.planName,
+          pair: item.symbol,
+          amount: Number(item.amount).toFixed(2) + ' USDT',
+          qty: item.qty || item.baseQuantity || '—',
+          filledQuoteAmount: item.filledQuoteAmount || item.quoteAmount || 0,
+          orderId: item.orderId || '',
+          price: item.status === 'simulated' ? '模拟价格' : '已提交',
+          status: item.status
+        }));
+        window.orbitUi.renderExecutions();
+      } else if (executionsResult.status === 'rejected') console.warn('executions sync failed', executionsResult.reason?.message || executionsResult.reason);
 
       const syncTime = document.querySelector('#balance-sync-time');
       if (syncTime) syncTime.textContent = '点击“立即同步”读取账户资产';
